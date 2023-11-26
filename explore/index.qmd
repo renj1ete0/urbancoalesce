@@ -1,0 +1,15 @@
+---
+title: "Ren Jie's IS415 Journal"
+listing:
+  contents: 
+    - "*.qmd"
+  type: default
+  categories: cloud
+  sort-ui: [title, date]
+  sort: date desc
+  filter-ui: true
+  fields: [image, date, title, description, author, reading-time]
+format:
+  html:
+    page-layout: full
+---

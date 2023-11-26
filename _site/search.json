@@ -1,0 +1,44 @@
+[
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "About this site\n\n1 + 1\n\n[1] 2"
+  },
+  {
+    "objectID": "explore/index.html",
+    "href": "explore/index.html",
+    "title": "Ren Jie’s IS415 Journal",
+    "section": "",
+    "text": "Order By\n       Default\n         \n          Title\n        \n         \n          Date - Oldest\n        \n         \n          Date - Newest\n        \n     \n  \n    \n      \n      \n    \n\n\n\n\n\n\n\n\n\n\n\n\n\nSample Python Document\n\n\n\n\n\nThis is a document to test python\n\n\n\n\n\n\nNov 26, 2023\n\n\nTeo Ren Jie\n\n\n0 min\n\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "explore/sample_doc.html",
+    "href": "explore/sample_doc.html",
+    "title": "Sample Python Document",
+    "section": "",
+    "text": "reticulate::repl_python()\n\nexit\n\n\n\na = 1 + 3\n\n\n\n\n\nprint(a)\n\n4"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Teo Ren Jie",
+    "section": "",
+    "text": "About Me\n\n\nI’m Ren Jie, a Year 3 Information Systems Undergraduate student at the Singapore Management University, majoring in Digitalisation & Cloud Solutions (SCIS) and Urban Science (CIS).\nMy interests are in urban science and urban planning. I am excited to learn more about geospatial analytics from this course which will value-add to my individualised second major in Urban Science at the College of Integrative Studies, where I aim to utilise, integrate and interpret data from the city into innovative solutions for cities of the future.\n\n\n\nMore About This Site\n\n\n\n\n\n\n\nWarning\n\n\n\nThis site is still a work in progress!\n\n\n\n\nFind Me\n\nConnect with me on LinkedIn or contact me through email!"
+  },
+  {
+    "objectID": "portfolio.html",
+    "href": "portfolio.html",
+    "title": "Portfolio",
+    "section": "",
+    "text": "Nothing here for now!\n\n\n\n\n\n\nWarning\n\n\n\nThis site is still a work in progress!"
+  },
+  {
+    "objectID": "readme.html",
+    "href": "readme.html",
+    "title": "UrbanCoalesce",
+    "section": "",
+    "text": "UrbanCoalesce\nThis repository contains the Quarto and assets for the renjieteo.comwebsite"
+  }
+]

@@ -1,0 +1,44 @@
+---
+title: "Teo Ren Jie"
+subtitle: "Aspiring Urban Scientist"
+about:
+  template: solana
+  image: profile.jpg
+  image-shape: round
+  links:
+    - icon: github
+      text: GitHub
+      href: https://github.com/renjie-teo
+    - icon: linkedin
+      text: LinkedIn
+      href: https://www.linkedin.com/in/renjieteo/
+    - icon: email
+      text: Email
+      href: mailto:renjieteo@outlook.com
+format:
+  html:
+    page-layout: full
+toc: false
+---
+
+# About Me
+
+------------------------------------------------------------------------
+
+> I'm Ren Jie, a Year 3 Information Systems Undergraduate student at the Singapore Management University, majoring in Digitalisation & Cloud Solutions (SCIS) and Urban Science (CIS).
+>
+> My interests are in urban science and urban planning. I am excited to learn more about geospatial analytics from this course which will value-add to my individualised second major in Urban Science at the College of Integrative Studies, where I aim to utilise, integrate and interpret data from the city into innovative solutions for cities of the future.
+
+# More About This Site
+
+------------------------------------------------------------------------
+
+::: callout-warning
+This site is still a work in progress!
+:::
+
+# Find Me
+
+------------------------------------------------------------------------
+
+Connect with me on [LinkedIn](https://www.linkedin.com/in/renjieteo/) or contact me through [email](mailto:renjieteo@outlook.com)!

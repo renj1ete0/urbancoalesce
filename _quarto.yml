@@ -1,0 +1,45 @@
+project:
+  type: website
+
+website:
+  title: "UrbanCoalesce"
+  search:
+    location: navbar
+    type: textbox
+  reader-mode: true
+  navbar:
+    search: true
+    background: primary
+    right:
+      - href: index.qmd
+        text: Home
+      - href: portfolio.qmd
+        text: Portfolio
+      - href: explore/index.qmd
+        text: Exploration        
+        
+      - icon: github
+        href: https://github.com/renjie-teo
+      - icon: linkedin
+        href: https://www.linkedin.com/in/renjieteo/
+        
+  page-footer:
+    background: dark
+    left: "Ren Jie Teo" 
+    right: 
+      - icon: github
+        href: https://github.com/renj1ete0
+      - icon: linkedin
+        href: https://www.linkedin.com/in/renjieteo/
+
+
+format:
+  html:
+    theme:
+      dark: [darkly, dark.scss]
+      light: [flatly, light.scss]
+    fontsize: 0.98em
+    linestretch: 1.7
+
+editor: visual
+
