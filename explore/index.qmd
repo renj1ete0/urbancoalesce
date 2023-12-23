@@ -1,5 +1,6 @@
 ---
-title: "Ren Jie's IS415 Journal"
+title: "UrbanCoalesce // Explore"
+#description: "Detailing my exploration"
 listing:
   contents: 
     - "*.qmd"

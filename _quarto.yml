@@ -25,13 +25,12 @@ website:
         
   page-footer:
     background: dark
-    left: "Ren Jie Teo" 
+    left: "UrbanCoalesce" 
     right: 
       - icon: github
         href: https://github.com/renj1ete0
       - icon: linkedin
         href: https://www.linkedin.com/in/renjieteo/
-
 
 format:
   html:

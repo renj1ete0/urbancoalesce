@@ -1,0 +1,148 @@
+---
+title: "Bus Service 167: Travel Pattern Analysis"
+description: "Analysis of Travel Patterns Using OD-Matrix provided by LTA"
+author: "Teo Ren Jie"
+date: "12/23/2023"
+#date-modified: "4/13/2023"
+number-sections: true
+categories: ["167", "Bus", "Travel Pattern Analysis", "R"]
+title-block-banner: true
+#image: Take-Home_Ex03/preview.png
+execute:
+  message: false
+  warning: false
+---
+
+# Overview
+
+## Issue
+
+Given the
+
+## Objectives
+
+Understand more about the initial failure of the route rationalisation of bus service 167:
+
+1.  Commuters perspective
+2.  Why a hub-and-spoke approach (with the introduction of Thomson East Coast Line) is insufficient to shift demand?
+
+Click here to skip to the analysis
+
+# Getting Started
+
+## Setting Up
+
+Packages required to be loaded for
+
+```{r}
+pacman::p_load(dplyr, readr, sf, tidyverse, tmap, sfdep, ggpubr, Metrics, ggplot2, plotly, spdep, rjson)
+```
+
+## Data Sources
+
+| Dataset Name                                               | Source                                                                                          | Methodology |
+|------------------------------------------------------------|-------------------------------------------------------------------------------------------------|-------------|
+| Origin-Destination Passenger Count for Buses (OD) Nov 2023 | [[LTA Datamall]{.underline}](https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html) | API         |
+| Bus Routes as of 26 Nov 2023                               | [LTA Datamall](https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html)               | API         |
+| Bus Stops as of 26 Nov 2023                                | [LTA Datamall](https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html)               | API         |
+
+# Data Preparation
+
+## Loading Data
+
+Loading the Origin-Destination Passenger Count for Buses
+
+```{r}
+OD_2023_11 <- read.csv("data/167_OD_analysis/origin_destination_bus_202311.csv")
+```
+
+Loading the Bus Routes JSON file:
+
+```{r}
+BUS_ROUTE <- fromJSON(file="data/167_OD_analysis/busroute_2023-11-26.json")
+```
+
+Loading the Bus Stops JSON file:
+
+```{r}
+BUS_STOP <- fromJSON(file="data/167_OD_analysis/busstop_2023-11-26.json")
+```
+
+## Extracting Relevant Information
+
+## Extracting Relevant Information
+
+For the OD Passenger Count, we are only interested in obtaining counts which involves bus service 167. We will need to extract it twice, once for each direction.
+
+We are not implementing a check for stops since the JSON data from LTA Datamall is returned in stop sequence.
+
+### Extract 167 Bus Stops
+
+::: callout-note
+As LTA's OD Count stores CBD area bus stops starting with 0 as 4 digit codes instead of 5 digit prefixed with 0, we recode the bus stops as numeric and drop the '0' prefix
+:::
+
+```{r}
+
+BS_167_DIR_1 <- list()
+BS_167_DIR_2 <- list()
+
+for (route_info in BUS_ROUTE){
+  if (route_info$ServiceNo == "167"){
+    if (route_info$Direction == 1){
+      BS_167_DIR_1 <- append(BS_167_DIR_1, as.numeric(route_info$BusStopCode))
+    }
+    else if (route_info$Direction == 2){
+      BS_167_DIR_2 <- append(BS_167_DIR_2, as.numeric(route_info$BusStopCode))
+    }
+  }
+}
+```
+
+### Extract OD Passenger Count Related to 167
+
+Extracting the Direction 1 OD Data
+
+```{r}
+OD_2023_11_DIR1 <- OD_2023_11 %>% filter(OD_2023_11$ORIGIN_PT_CODE %in% BS_167_DIR_1 & OD_2023_11$DESTINATION_PT_CODE %in% BS_167_DIR_1)
+```
+
+Just to check if the number of bus stops extracted matches the number of stops we have
+
+```{r}
+num_stops_OD_1 <- n_distinct(OD_2023_11_DIR1$ORIGIN_PT_CODE)
+num_stops_OD_1
+num_stops_OD_1 == length(BS_167_DIR_1)
+```
+
+Extracting the Direction 2 OD Data
+
+```{r}
+OD_2023_11_DIR2 <- OD_2023_11 %>% filter(OD_2023_11$ORIGIN_PT_CODE %in% BS_167_DIR_2 & OD_2023_11$DESTINATION_PT_CODE %in% BS_167_DIR_2)
+```
+
+Just to check if the number of bus stops extracted matches the number of stops we have
+
+```{r}
+num_stops_OD_2 <- n_distinct(OD_2023_11_DIR2$ORIGIN_PT_CODE)
+num_stops_OD_2
+num_stops_OD_2 == length(BS_167_DIR_2)
+```
+
+# Exploratory Data Analysis
+
+Investigating the Bus Stops on Bus Service 167
+
+::: panel-tabset
+## Dir 1 (Sembawang to Bt Merah)
+
+71 Stops
+
+```{r}
+BS_167_DIR_1
+```
+
+## Dir 2 (Bt Merah to Sembawang)
+
+69 Stops
+:::
