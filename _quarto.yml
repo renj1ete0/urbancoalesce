@@ -22,7 +22,6 @@ website:
         href: https://github.com/renjie-teo
       - icon: linkedin
         href: https://www.linkedin.com/in/renjieteo/
-        
   page-footer:
     background: dark
     left: "UrbanCoalesce" 
@@ -31,6 +30,8 @@ website:
         href: https://github.com/renj1ete0
       - icon: linkedin
         href: https://www.linkedin.com/in/renjieteo/
+  #google-analytics: "KEY"
+  open-graph: true
 
 format:
   html:
@@ -39,6 +40,7 @@ format:
       light: [flatly, light.scss]
     fontsize: 0.98em
     linestretch: 1.7
+    toc: true
 
 editor: visual
 
