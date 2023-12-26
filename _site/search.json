@@ -11,7 +11,7 @@
     "href": "explore/index.html",
     "title": "UrbanCoalesce // Explore",
     "section": "",
-    "text": "Order By\n       Default\n         \n          Title\n        \n         \n          Date - Oldest\n        \n         \n          Date - Newest\n        \n     \n  \n    \n      \n      \n    \n\n\n\n\n  \n\n\n\n\nBus Service 167: Travel Pattern Analysis\n\n\n\n\n\nAnalysis of Travel Patterns Using OD-Matrix provided by LTA\n\n\n\n\n\n\nDec 23, 2023\n\n\nTeo Ren Jie\n\n\n4 min\n\n\n\n\n\n\n  \n\n\n\n\nSample Python Document\n\n\n\n\n\nThis is a document to test python\n\n\n\n\n\n\nNov 26, 2023\n\n\nTeo Ren Jie\n\n\n1 min\n\n\n\n\n\n\nNo matching items"
+    "text": "Order By\n       Default\n         \n          Title\n        \n         \n          Date - Oldest\n        \n         \n          Date - Newest\n        \n     \n  \n    \n      \n      \n    \n\n\n\n\n  \n\n\n\n\nBus Service 167: Travel Pattern Analysis\n\n\n\n\n\nAnalysis of Travel Patterns Using OD-Matrix provided by LTA\n\n\n\n\n\n\nDec 23, 2023\n\n\nTeo Ren Jie\n\n\n6 min\n\n\n\n\n\n\n  \n\n\n\n\nSample Python Document\n\n\n\n\n\nThis is a document to test python\n\n\n\n\n\n\nNov 26, 2023\n\n\nTeo Ren Jie\n\n\n1 min\n\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "explore/sample_doc.html",
@@ -46,28 +46,28 @@
     "href": "explore/167_OD_analysis.html",
     "title": "Bus Service 167: Travel Pattern Analysis",
     "section": "",
-    "text": "Given the\n\n\n\nUnderstand more about the initial failure of the route rationalisation of bus service 167:\n\nCommuters perspective\nWhy a hub-and-spoke approach (with the introduction of Thomson East Coast Line) is insufficient to shift demand?\n\nClick here to skip to the analysis"
+    "text": "Caution\n\n\n\nThis article and analysis is a work-in-progress! Read the results at your own risk!"
   },
   {
     "objectID": "explore/167_OD_analysis.html#setting-up",
     "href": "explore/167_OD_analysis.html#setting-up",
     "title": "Bus Service 167: Travel Pattern Analysis",
     "section": "2.1 Setting Up",
-    "text": "2.1 Setting Up\nPackages required to be loaded for\n\npacman::p_load(dplyr, readr, sf, tidyverse, tmap, sfdep, ggpubr, Metrics, ggplot2, plotly, spdep, rjson)\n\npackage 'tidyverse' successfully unpacked and MD5 sums checked\n\nThe downloaded binary packages are in\n    H:\\.rTemp\\Rtmpqm4LQ4\\downloaded_packages\npackage 'ggpubr' successfully unpacked and MD5 sums checked\n\nThe downloaded binary packages are in\n    H:\\.rTemp\\Rtmpqm4LQ4\\downloaded_packages\npackage 'plotly' successfully unpacked and MD5 sums checked\n\nThe downloaded binary packages are in\n    H:\\.rTemp\\Rtmpqm4LQ4\\downloaded_packages"
+    "text": "2.1 Setting Up\nPackages required to be loaded for\n\npacman::p_load(dplyr, readr, sf, tidyverse, tmap, sfdep, ggpubr, Metrics, ggplot2, plotly, spdep, rjson, od)"
   },
   {
     "objectID": "explore/167_OD_analysis.html#issue",
     "href": "explore/167_OD_analysis.html#issue",
     "title": "Bus Service 167: Travel Pattern Analysis",
-    "section": "",
-    "text": "Given the"
+    "section": "1.1 Issue",
+    "text": "1.1 Issue\nGiven the"
   },
   {
     "objectID": "explore/167_OD_analysis.html#objectives",
     "href": "explore/167_OD_analysis.html#objectives",
     "title": "Bus Service 167: Travel Pattern Analysis",
-    "section": "",
-    "text": "Understand more about the initial failure of the route rationalisation of bus service 167:\n\nCommuters perspective\nWhy a hub-and-spoke approach (with the introduction of Thomson East Coast Line) is insufficient to shift demand?\n\nClick here to skip to the analysis"
+    "section": "1.2 Objectives",
+    "text": "1.2 Objectives\nUnderstand more about the initial failure of the route rationalisation of bus service 167:\n\nCommuters perspective\nWhy a hub-and-spoke approach (with the introduction of Thomson East Coast Line) is insufficient to shift demand?\n\nClick here to skip to the analysis"
   },
   {
     "objectID": "explore/167_OD_analysis.html#data-sources",
@@ -95,7 +95,7 @@
     "href": "explore/167_OD_analysis.html#extracting-relevant-information-1",
     "title": "Bus Service 167: Travel Pattern Analysis",
     "section": "3.3 Extracting Relevant Information",
-    "text": "3.3 Extracting Relevant Information\nFor the OD Passenger Count, we are only interested in obtaining counts which involves bus service 167. We will need to extract it twice, once for each direction.\nWe are not implementing a check for stops since the JSON data from LTA Datamall is returned in stop sequence.\n\n3.3.1 Extract 167 Bus Stops\n\n\n\n\n\n\nNote\n\n\n\nAs LTA’s OD Count stores CBD area bus stops starting with 0 as 4 digit codes instead of 5 digit prefixed with 0, we recode the bus stops as numeric and drop the ‘0’ prefix\n\n\n\nBS_167_DIR_1 &lt;- list()\nBS_167_DIR_2 &lt;- list()\n\nfor (route_info in BUS_ROUTE){\n  if (route_info$ServiceNo == \"167\"){\n    if (route_info$Direction == 1){\n      BS_167_DIR_1 &lt;- append(BS_167_DIR_1, as.numeric(route_info$BusStopCode))\n    }\n    else if (route_info$Direction == 2){\n      BS_167_DIR_2 &lt;- append(BS_167_DIR_2, as.numeric(route_info$BusStopCode))\n    }\n  }\n}\n\n\n\n3.3.2 Extract OD Passenger Count Related to 167\nExtracting the Direction 1 OD Data\n\nOD_2023_11_DIR1 &lt;- OD_2023_11 %&gt;% filter(OD_2023_11$ORIGIN_PT_CODE %in% BS_167_DIR_1 & OD_2023_11$DESTINATION_PT_CODE %in% BS_167_DIR_1)\n\nJust to check if the number of bus stops extracted matches the number of stops we have\n\nnum_stops_OD_1 &lt;- n_distinct(OD_2023_11_DIR1$ORIGIN_PT_CODE)\nnum_stops_OD_1\n\n[1] 71\n\nnum_stops_OD_1 == length(BS_167_DIR_1)\n\n[1] TRUE\n\n\nExtracting the Direction 2 OD Data\n\nOD_2023_11_DIR2 &lt;- OD_2023_11 %&gt;% filter(OD_2023_11$ORIGIN_PT_CODE %in% BS_167_DIR_2 & OD_2023_11$DESTINATION_PT_CODE %in% BS_167_DIR_2)\n\nJust to check if the number of bus stops extracted matches the number of stops we have\n\nnum_stops_OD_2 &lt;- n_distinct(OD_2023_11_DIR2$ORIGIN_PT_CODE)\nnum_stops_OD_2\n\n[1] 69\n\nnum_stops_OD_2 == length(BS_167_DIR_2)\n\n[1] TRUE"
+    "text": "3.3 Extracting Relevant Information\nFor the OD Passenger Count, we are only interested in obtaining counts which involves bus service 167. We will need to extract it twice, once for each direction.\nWe are not implementing a check for stops since the JSON data from LTA Datamall is returned in stop sequence.\n\n3.3.1 Extract 167 Bus Stops\n\n\n\n\n\n\nNote\n\n\n\nAs LTA’s OD Count stores CBD area bus stops starting with 0 as 4 digit codes instead of 5 digit prefixed with 0, we recode the bus stops as numeric and drop the ‘0’ prefix\n\n\n\nBS_167_DIR_1_DF &lt;- data.frame(Seq =  integer(), BS_Code = integer())\nBS_167_DIR_2_DF &lt;- data.frame(Seq =  integer(), BS_Code = integer())\n\nfor (route_info in BUS_ROUTE){\n  if (route_info$ServiceNo == \"167\"){\n    if (route_info$Direction == 1){\n      BS_167_DIR_1_temp &lt;- data.frame(Seq = as.numeric(route_info$StopSequence), BS_Code = as.numeric(route_info$BusStopCode))\n      BS_167_DIR_1_DF[nrow(BS_167_DIR_1_DF) +1,] &lt;- BS_167_DIR_1_temp\n    }\n    else if (route_info$Direction == 2){\n      BS_167_DIR_2_temp &lt;- data.frame(Seq = as.numeric(route_info$StopSequence), BS_Code = as.numeric(route_info$BusStopCode))\n      BS_167_DIR_2_DF[nrow(BS_167_DIR_2_DF) +1,] &lt;- BS_167_DIR_2_temp  \n    }\n  }\n}\n\nrm(BS_167_DIR_1_temp)\nrm(BS_167_DIR_2_temp)\n\n\n\n3.3.2 Append Bus Stop Names to DataFrame\nWe convert the List format of Bus Stops to a more workable DataFrame format\n\nBUS_STOP_DF &lt;- data.frame(BS_Code = integer(), BS_Road_Name = character(), BS_Name = character(), Latitude = double(), Longitude = double())\nfor (bs in BUS_STOP){\n  BS_TEMP &lt;- data.frame(BS_Code = as.numeric(bs$BusStopCode), BS_Road_Name = bs$RoadName, BS_Name = bs$Description, Latitude = as.numeric(bs$Latitude), Longitude = as.numeric(bs$Longitude))\n  BUS_STOP_DF[nrow(BUS_STOP_DF) +1,] &lt;- BS_TEMP  \n}\nrm(BS_TEMP)\n\nWe then do a left join, merging the bus stop info into Bus Service direction DataFrames\n\nBS_167_DIR_1_DF &lt;- merge(x=BS_167_DIR_1_DF,y=BUS_STOP_DF, \n             by=\"BS_Code\", all.x=TRUE)\nBS_167_DIR_2_DF &lt;- merge(x=BS_167_DIR_2_DF,y=BUS_STOP_DF, \n             by=\"BS_Code\", all.x=TRUE)\n\n\n\n3.3.3 Reset Row Index Numbering\n\nrownames(BS_167_DIR_1_DF) &lt;- BS_167_DIR_1_DF$Seq\nrownames(BS_167_DIR_2_DF) &lt;- BS_167_DIR_2_DF$Seq\n\n\n\n3.3.4 Extract OD Passenger Count Related to 167\nExtracting the Direction 1 OD Data\n\nOD_2023_11_DIR1 &lt;- OD_2023_11 %&gt;% filter(OD_2023_11$ORIGIN_PT_CODE %in% BS_167_DIR_1_DF$BS_Code & OD_2023_11$DESTINATION_PT_CODE %in% BS_167_DIR_1_DF$BS_Code)\n\nJust to check if the number of bus stops extracted matches the number of stops we have\n\nnum_stops_OD_1 &lt;- n_distinct(OD_2023_11_DIR1$ORIGIN_PT_CODE)\nnum_stops_OD_1\n\n[1] 71\n\nnum_stops_OD_1 == nrow(BS_167_DIR_1_DF)\n\n[1] TRUE\n\n\nExtracting the Direction 2 OD Data\n\nOD_2023_11_DIR2 &lt;- OD_2023_11 %&gt;% filter(OD_2023_11$ORIGIN_PT_CODE %in% BS_167_DIR_2_DF$BS_Code & OD_2023_11$DESTINATION_PT_CODE %in% BS_167_DIR_2_DF$BS_Code)\n\nJust to check if the number of bus stops extracted matches the number of stops we have\n\nnum_stops_OD_2 &lt;- n_distinct(OD_2023_11_DIR2$ORIGIN_PT_CODE)\nnum_stops_OD_2\n\n[1] 69\n\nnum_stops_OD_2 == nrow(BS_167_DIR_2_DF)\n\n[1] TRUE"
   },
   {
     "objectID": "index.html#education",
