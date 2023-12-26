@@ -224,7 +224,6 @@ gen_od_timing <- function(input_OD, sf_bs, timing){
 }
 tmap_plot_route <- function(BS, OD) {
   tmap_mode("view")
-  tm_basemap(leaflet::providers$Stadia.StamenToner) +
   tm_shape(BS) +
     tm_dots(col = "magenta", scale = 1.3) +
   #tm_shape(sf_BS_167_DIR_2) +
