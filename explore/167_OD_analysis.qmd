@@ -434,6 +434,7 @@ tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
 temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
 
 plot_trip_summary(temp_sf_sz_intra_flows)
+temp_sf_sz_inter
 ```
 
 ## 7am
@@ -450,6 +451,7 @@ tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
 temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
 
 plot_trip_summary(temp_sf_sz_intra_flows)
+temp_sf_sz_inter
 ```
 
 ## 8am
@@ -466,6 +468,7 @@ tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
 temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
 
 plot_trip_summary(temp_sf_sz_intra_flows)
+temp_sf_sz_inter
 ```
 
 ## 9am
@@ -482,22 +485,7 @@ tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
 temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
 
 plot_trip_summary(temp_sf_sz_intra_flows)
-```
-
-## 9am
-
-```{r}
-tmap_options(check.and.fix = TRUE)
-temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 9)
-
-temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
-temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
-temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
-
-tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
-temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
-
-plot_trip_summary(temp_sf_sz_intra_flows)
+temp_sf_sz_inter
 ```
 
 ## 10am
@@ -514,6 +502,7 @@ tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
 temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
 
 plot_trip_summary(temp_sf_sz_intra_flows)
+temp_sf_sz_inter
 ```
 
 ## 11am
@@ -530,6 +519,7 @@ tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
 temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
 
 plot_trip_summary(temp_sf_sz_intra_flows)
+temp_sf_sz_inter
 ```
 
 ## 12pm
@@ -546,6 +536,58 @@ tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
 temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
 
 plot_trip_summary(temp_sf_sz_intra_flows)
+temp_sf_sz_inter
+```
+
+## 6pm
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 18)
+
+temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
+temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
+temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+
+tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
+temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
+
+plot_trip_summary(temp_sf_sz_intra_flows)
+temp_sf_sz_inter
+```
+
+## 7pm
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 19)
+
+temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
+temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
+temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+
+tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
+temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
+
+plot_trip_summary(temp_sf_sz_intra_flows)
+temp_sf_sz_inter
+```
+
+## 8pm
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 20)
+
+temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
+temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
+temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+
+tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
+temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
+
+plot_trip_summary(temp_sf_sz_intra_flows)
+temp_sf_sz_inter
 ```
 :::
 
