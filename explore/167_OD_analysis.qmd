@@ -39,7 +39,7 @@ Click here to skip to the analysis
 Packages required to be loaded for
 
 ```{r}
-pacman::p_load(dplyr, readr, sf, tidyverse, tmap, sfdep, ggpubr, Metrics, ggplot2, plotly, spdep, rjson, od, gifski)
+pacman::p_load(dplyr, readr, sf, tidyverse, tmap, sfdep, ggpubr, Metrics, ggplot2, plotly, spdep, rjson, od, gifski, stplanr)
 ```
 
 ## Data Sources
@@ -72,10 +72,12 @@ Loading the Bus Stops JSON file:
 BUS_STOP <- fromJSON(file="data/167_OD_analysis/busstop_2023-11-26.json")
 ```
 
-Load MPSZ SHP:
+Load MPSZ (2019):
 
 ```{r}
-mpsz_2014_sf <- st_read("data/167_OD_analysis/mpsz_2014/MP14_SUBZONE_WEB_PL.shp")
+mpsz <- st_read(dsn = "data/167_OD_analysis/",
+                   layer = "MPSZ-2019") %>%
+  st_transform(crs = 3414)
 ```
 
 ## Extracting Relevant Information
@@ -309,7 +311,7 @@ while (i_time < 24){
   temp_tm <- 
   #tm_shape(sf_BS_167_DIR_2) +
   #  tm_dots(col = "blue", scale = 2) +
-  tm_shape(mpsz_2014_sf, bbox = c(22000, 27000, 34000, 49000)) +
+  tm_shape(mpsz, bbox = c(22000, 27000, 34000, 49000)) +
     tm_polygons(alpha=0) +
   tm_shape(temp_sf) +
     tm_lines("TOTAL_TRIPS",  style="fixed", breaks = c(0, 25, 50, 100, 250, 500, 700, 1000, 1500, 2500), lwd = "TOTAL_TRIPS", scale=10, palette="-viridis", alpha=0.8)  +
@@ -331,7 +333,221 @@ while (i_time < 24){
 tmap_animation(tm_objs,filename = "data/167_OD_analysis/test.gif", width=2500, height=1500, dpi=200, outer.margins = 0)
 ```
 
- 
+ I guess not very clear so we will analyse at subzone level
+
+# Data Analysis - Intra-Zonal Flows
+
+Analyse by combining trips into subzone level to have a rough overview
+
+```{r}
+mpsz_pln_area <- st_read(dsn = "data/167_OD_analysis/",
+                   layer = "MP14_PLNG_AREA_WEB_PL") %>%
+  st_transform(crs = 3414)
+
+```
+
+```{r}
+sf_BS_167_DIR_1_MPSZ <- st_intersection(sf_BS_167_DIR_1, mpsz_pln_area) %>%
+  select(BS_Code, PLN_AREA_C)
+  
+BUS_STOP_DF_MPSZ <- sf_BS_167_DIR_1_MPSZ %>% st_drop_geometry()
+```
+
+```{r}
+gen_od_timing_SZ <- function(input_OD, sf_bs, timing){
+  OD_TEST_DIR1 <- input_OD %>% filter(DAY_TYPE == "WEEKDAY" & TIME_PER_HOUR == timing)
+
+  OD_2023_11_DIR1_SZ <- left_join(OD_TEST_DIR1 , sf_bs,
+              by = c("ORIGIN_PT_CODE" = "BS_Code")) %>%
+    rename(ORIGIN_BS = ORIGIN_PT_CODE,
+           ORIGIN_PA = PLN_AREA_C,
+           DESTIN_BS = DESTINATION_PT_CODE)
+  
+  OD_2023_11_DIR1_SZ <- left_join(OD_2023_11_DIR1_SZ , sf_bs,
+              by = c("DESTIN_BS" = "BS_Code")) 
+  
+  OD_2023_11_DIR1_SZ <- OD_2023_11_DIR1_SZ %>%
+    rename(DESTIN_PA = PLN_AREA_C) %>%
+    drop_na() %>%
+    group_by(ORIGIN_PA, DESTIN_PA) %>%
+    summarise(SZ_TRIPS = sum(TOTAL_TRIPS))  
+  
+  return (OD_2023_11_DIR1_SZ)
+}
+
+gen_od_timing_SZ_intra <- function(OD_2023_11_DIR1_SZ){
+  OD_2023_11_DIR1_SZ_INTRA <- OD_2023_11_DIR1_SZ[OD_2023_11_DIR1_SZ$ORIGIN_PA!=OD_2023_11_DIR1_SZ$DESTIN_PA,]
+  return (OD_2023_11_DIR1_SZ_INTRA)
+}
+
+gen_od_timing_SZ_inter <- function(OD_2023_11_DIR1_SZ){
+  OD_2023_11_DIR1_SZ_INTER <- OD_2023_11_DIR1_SZ[OD_2023_11_DIR1_SZ$ORIGIN_PA==OD_2023_11_DIR1_SZ$DESTIN_PA,]
+  return (OD_2023_11_DIR1_SZ_INTER)
+}
+
+gen_od_timing_SZ_flows <- function(OD_2023_11_DIR1_SZ_INTRA){
+
+  sf_OD_2023_11_DIR1_SZ_INTRA_FLOWS <- od2line(flow = OD_2023_11_DIR1_SZ_INTRA, 
+                      zones = mpsz_pln_area,
+                      zone_code = "PLN_AREA_C")  
+  
+  return (sf_OD_2023_11_DIR1_SZ_INTRA_FLOWS)
+}
+tmap_plot_sz <- function(BS, OD) {
+  tmap_mode("view")
+  tm_shape(mpsz_pln_area) +
+    tm_polygons("PLN_AREA_C", legend.show = FALSE, palette="Set3") +
+  tm_shape(BS) +
+    tm_dots("PLN_AREA_C", scale = 1.3, legend.show = FALSE, palette="Set3") +
+  #tm_shape(sf_BS_167_DIR_2) +
+  #  tm_dots(col = "blue", scale = 2) +
+  tm_shape(OD) +
+    tm_lines(col = "SZ_TRIPS", style="fixed", breaks = c(0, 25, 50, 100, 250, 500, 700, 1000, 1500, 2500), lwd = "SZ_TRIPS", scale=15, palette="viridis")
+}
+plot_trip_summary <- function(OD){
+  summary(OD$SZ_TRIPS)
+  p <- ggplot(OD, aes(x=SZ_TRIPS)) + 
+    geom_histogram(binwidth=100) +
+    xlim(0, 2500) +
+    ylim(0, 400)
+  
+  ggplotly(p)
+}
+```
+
+::: panel-tabset
+Weekday trips, 6am to 9am - temp plots
+
+For OD Count Data on Weekday, divide total trip value by 21 (21 weekdays excl PH)
+
+## 6am
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 6)
+
+temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
+temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
+temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+
+tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
+temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
+
+plot_trip_summary(temp_sf_sz_intra_flows)
+```
+
+## 7am
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 7)
+
+temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
+temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
+temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+
+tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
+temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
+
+plot_trip_summary(temp_sf_sz_intra_flows)
+```
+
+## 8am
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 8)
+
+temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
+temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
+temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+
+tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
+temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
+
+plot_trip_summary(temp_sf_sz_intra_flows)
+```
+
+## 9am
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 9)
+
+temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
+temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
+temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+
+tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
+temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
+
+plot_trip_summary(temp_sf_sz_intra_flows)
+```
+
+## 9am
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 9)
+
+temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
+temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
+temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+
+tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
+temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
+
+plot_trip_summary(temp_sf_sz_intra_flows)
+```
+
+## 10am
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 10)
+
+temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
+temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
+temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+
+tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
+temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
+
+plot_trip_summary(temp_sf_sz_intra_flows)
+```
+
+## 11am
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 11)
+
+temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
+temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
+temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+
+tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
+temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
+
+plot_trip_summary(temp_sf_sz_intra_flows)
+```
+
+## 12pm
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 12)
+
+temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
+temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
+temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+
+tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
+temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
+
+plot_trip_summary(temp_sf_sz_intra_flows)
+```
+:::
 
 Todo list:
 
