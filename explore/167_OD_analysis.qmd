@@ -1,9 +1,9 @@
 ---
-title: "Bus Service 167: Travel Pattern Analysis"
+title: "[WIP] Bus Service 167: Travel Pattern Analysis"
 description: "Analysis of Travel Patterns Using OD-Matrix provided by LTA"
 author: "Teo Ren Jie"
 date: "12/23/2023"
-#date-modified: "4/13/2023"
+date-modified: "1/3/2024"
 number-sections: true
 categories: ["167", "Bus", "Travel Pattern Analysis", "R"]
 title-block-banner: true
@@ -14,21 +14,23 @@ execute:
 ---
 
 ::: callout-caution
-This article and analysis is a work-in-progress! Read the results at your own risk!
+This article and analysis is a work-in-progress! Please read and interpret results at your own risk, check back for the final article!
 :::
 
 # Overview
 
-## Issue
+## Background
 
-Given the
+With the introduction of Thomson East Coast Line 3 between Caldecott and Gardens by the Bay stations, bridging the Upper Thomson area towards the city, the Land Transport Authority of Singapore (LTA) sought to reduce duplication of bus routes with new train lines, which was common practice in Singapore.
+
+Yet, the announcement of the discontinuation of bus service 167 was widely
 
 ## Objectives
 
 Understand more about the initial failure of the route rationalisation of bus service 167:
 
 1.  Commuters perspective
-2.  Why a hub-and-spoke approach (with the introduction of Thomson East Coast Line) is insufficient to shift demand?
+2.  Why a hub-and-spoke approach (with the introduction of Thomson East Coast Line) is insufficient to shift demand? \[pending analysis\]
 
 Click here to skip to the analysis
 
@@ -45,7 +47,7 @@ pacman::p_load(dplyr, readr, sf, tidyverse, tmap, sfdep, ggpubr, Metrics, ggplot
 ## Data Sources
 
 | Dataset Name                                               | Source                                                                                          | Methodology |
-|----------------------|------------------------------------|---------------|
+|---------------------|----------------------------------|-----------------|
 | Origin-Destination Passenger Count for Buses (OD) Nov 2023 | [[LTA Datamall]{.underline}](https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html) | API         |
 | Bus Routes as of 26 Nov 2023                               | [LTA Datamall](https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html)               | API         |
 | Bus Stops as of 26 Nov 2023                                | [LTA Datamall](https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html)               | API         |
@@ -72,12 +74,37 @@ Loading the Bus Stops JSON file:
 BUS_STOP <- fromJSON(file="data/167_OD_analysis/busstop_2023-11-26.json")
 ```
 
+Loading the Bus Service JSON file:
+
+```{r}
+BUS_SERVICE <- fromJSON(file="data/167_OD_analysis/busservice_2023-11-26.json")
+```
+
 Load MPSZ (2019):
 
 ```{r}
 mpsz <- st_read(dsn = "data/167_OD_analysis/",
                    layer = "MPSZ-2019") %>%
   st_transform(crs = 3414)
+```
+
+## Define Static Variables
+
+### Information of Month
+
+```{r}
+WEEKDAY_OF_MONTH = 21
+SUN_PH_OF_MONTH = 5
+SAT_OF_MONTH = 4
+WEEKEND_OF_MONTH = SUN_PH_OF_MONTH + SAT_OF_MONTH
+```
+
+### Normalise Data
+
+As the OD data from LTA sums trips from entire month, we need to normalise them to trips per day for ease of comparison between Weekdays, Saturdays and Sun_PH.
+
+```{r}
+OD_2023_11 <- OD_2023_11 %>% mutate(TOTAL_TRIPS = ifelse(DAY_TYPE=="WEEKENDS/HOLIDAY", TOTAL_TRIPS / WEEKEND_OF_MONTH, TOTAL_TRIPS / WEEKDAY_OF_MONTH ))
 ```
 
 ## Extracting Relevant Information
@@ -173,6 +200,41 @@ num_stops_OD_2
 num_stops_OD_2 == nrow(BS_167_DIR_2_DF)
 ```
 
+### Extract Bus Route Info to DataFrame
+
+We save information that is required for our analysis from JSON to DataFrame format
+
+```{r}
+BUS_ROUTE_DF <- data.frame(Service_No = character(), Direction = integer(), Seq = integer(), BS_Code = integer(), Distance = double(), WD_FirstBus = integer(), WD_LastBus = integer(), SAT_FirstBus = integer(), SAT_LastBus = integer(), SUN_FirstBus = integer(), SUN_LastBus = integer())
+for (route in BUS_ROUTE){
+  BS_RT_TEMP <- data.frame(ServiceNo = route$ServiceNo, Direction = as.numeric(route$Direction), Seq = as.numeric(route$StopSequence), BS_Code = as.numeric(route$BusStopCode), Distance = as.numeric(route$Distance), WD_FirstBus = as.numeric(route$WD_FirstBus), WD_LastBus = as.numeric(route$WD_LastBus), SAT_FirstBus = as.numeric(route$SAT_FirstBus), SAT_LastBus = as.numeric(route$SAT_LastBus), SUN_FirstBus = as.numeric(route$SUN_FirstBus), SUN_LastBus = as.numeric(route$SUN_LastBus))
+  BUS_ROUTE_DF[nrow(BUS_ROUTE_DF) +1,] <- BS_RT_TEMP  
+}
+rm(BS_RT_TEMP)
+```
+
+### Extract Bus Service Info to DataFrame
+
+```{r}
+BUS_SVC_DF <- data.frame(Service_No = character(), Direction = integer(), Category = character(), AM_Peak_Freq = character(), AM_OffPeak_Freq = character(), PM_Peak_Freq = character(), PM_OffPeak_Freq = character(), LoopDesc = character())
+for (svc in BUS_SERVICE){
+  BS_SVC_TEMP <- data.frame(Service_No = svc$ServiceNo, Direction = as.numeric(svc$Direction), Category = svc$Category, AM_Peak_Freq = svc$AM_Peak_Freq, AM_OffPeak_Freq = svc$AM_Offpeak_Freq, PM_OffPeak_Freq = svc$PM_Offpeak_Freq, PM_Peak_Freq = svc$PM_Peak_Freq, LoopDesc = svc$LoopDesc)
+  BUS_SVC_DF[nrow(BUS_SVC_DF) +1,] <- BS_SVC_TEMP  
+}
+rm(BS_SVC_TEMP)
+```
+
+### Discard Unneeded Variables
+
+```{r}
+rm(BUS_ROUTE)
+rm(BUS_SERVICE)
+rm(route)
+rm(svc)
+rm(bs)
+rm(route_info)
+```
+
 # Exploratory Data Analysis
 
 Investigating the Bus Stops on Bus Service 167
@@ -212,15 +274,6 @@ tm_shape(sf_BS_167_DIR_2) +
 ```
 
 ```{r}
-OD_2023_11_DIR1TEST <- left_join(OD_2023_11_DIR1, BUS_STOP_DF, 
-             by=c("ORIGIN_PT_CODE" = "BS_Code"))
-OD_2023_11_DIR1TEST <- left_join(OD_2023_11_DIR1TEST, BUS_STOP_DF, 
-             by=c("DESTINATION_PT_CODE" = "BS_Code"), suffix=c("_ORIGIN", "_DEST"))
-
-sf_BS_167_DIR_1test <- sf_BS_167_DIR_1[c(1,4)]
-```
-
-```{r}
 gen_od_timing <- function(input_OD, sf_bs, timing){
   OD_TEST_DIR1 <- input_OD %>% filter(DAY_TYPE == "WEEKDAY" & TIME_PER_HOUR == timing)
   OD_TEST_DIR1 <- OD_TEST_DIR1[5:7]
@@ -234,17 +287,14 @@ tmap_plot_route <- function(BS, OD) {
     tm_dots(col = "magenta", scale = 1.3) +
   #tm_shape(sf_BS_167_DIR_2) +
   #  tm_dots(col = "blue", scale = 2) +
-  tm_shape(OD) +
-    tm_lines("TOTAL_TRIPS",  style="fixed", breaks = c(0, 25, 50, 100, 250, 500, 700, 1000, 1500, 2500), lwd = "TOTAL_TRIPS", scale=15, palette="viridis")
-}
-plot_trip_summary <- function(OD){
-  summary(OD$TOTAL_TRIPS)
-  p <- ggplot(OD, aes(x=TOTAL_TRIPS)) + 
-    geom_histogram(binwidth=100) +
-    xlim(0, 2500) +
-    ylim(0, 400)
-  
-  ggplotly(p)
+  tm_shape(OD) + 
+    tm_lines(col = "TOTAL_TRIPS", style="fixed", breaks = c(0, 1, 5, 10, 15, 25, 50, 80, 130, 250), lwd = "TOTAL_TRIPS", scale=20, palette="viridis") 
+} 
+
+plot_trip_summary <- function(OD){ 
+  summary(OD$TOTAL_TRIPS) 
+  p <- ggplot(OD, aes(x=TOTAL_TRIPS)) + geom_histogram(binwidth=25) + xlim(0, 500) + ylim(0, 50)
+  ggplotly(p) 
 }
 ```
 
@@ -353,66 +403,365 @@ sf_BS_167_DIR_1_MPSZ <- st_intersection(sf_BS_167_DIR_1, mpsz_pln_area) %>%
 BUS_STOP_DF_MPSZ <- sf_BS_167_DIR_1_MPSZ %>% st_drop_geometry()
 ```
 
+## Normalisation of values
+
+OD Matrix shows flows between pairs of bus stops. For bus stop pairs served by different services, they will contribute to the same OD count.
+
+This is especially evident in certain bus stop pairs, such as BS 40189 Newton Stn Exit B to BS 09219 Far East Plaza, amongst others, where commuters would likely hop on any of the many buses along the road.
+
+#### Methodology
+
+We will use this formula in calculating and estimating the OD flows for 167 bus stops using this formula below.
+
+\<insert latex formula\>
+
+Bus Per Hour (BPH) for given service at given hour = 60 / Average Frequency at given timing for the given service\*
+
+\* if given service operates at 8 - 12 min during AM Peak, 10 minutes will be used, hence, computing a 10 min interval between buses and 6 buses per hour (bph)
+
+Flow between OD Pair for a given service at given hour = Total Flow between OD Pair at given hr x (BPH for given service at given hour / Sum of BPH on all services servicing between OD Pair at given hr) \^
+
+#### **\^ Rules**
+
+-   Trip distance of services shall not exceed 3km of mean distance of all services between the OD pair for normal services (non-express)
+
+    -   If services takes a large detour, we assume that passengers will not be inclined to take the detour of services since its longer
+
+-   Exclusion of services that charges express fares (Express or City Direct) if OD pair is less than 5km (ie. shorter than 'express' sector)
+
+Issues with assumptions:
+
+-   Assumes uniform distribution across all services
+
+-   For express services with express sectors, it is hard to estimate the split of passengers taking normal and express services - Assumption will be that they are equal
+
+#### Computing
+
+As LTA's data does not provide a differentiation for bus frequencies on weekdays and weekends, we will take the average time between the intervals provided
+
+Additionally, we will derive the frequencies as follows:
+
+-   For the following timings below, LTA's definition will be used, we will use the average of the frequency band provided:
+
+    -   AM Peak - 0630h to 0830h
+
+    -   AM Off Peak - 0831h to 1659h
+
+    -   PM Peak - 1700h to 1900h
+
+    -   PM Off Peak - after 1900h
+
+-   For the following timings below:
+
+    -   From start of service to 0630h - We take upper limit of AM Peak frequency
+
 ```{r}
-gen_od_timing_SZ <- function(input_OD, sf_bs, timing){
+
+norm_bph <- function(BUS_SVC, DIR, HOUR, NUM_DAY_OF_WEEK, BS_CODE_ORIGIN, BS_SEQ_ORIGIN){
+  # check operational
+  if (HOUR < 3){
+    HOUR <- HOUR + 24
+    if (NUM_DAY_OF_WEEK > 1){
+      NUM_DAY_OF_WEEK <- NUM_DAY_OF_WEEK - 1
+    }
+    else{
+      NUM_DAY_OF_WEEK <- 7
+    }
+  }
+  
+  total_time <- norm_bph_bs_operational(BUS_SVC, DIR, HOUR, NUM_DAY_OF_WEEK, BS_CODE_ORIGIN, BS_SEQ_ORIGIN)
+  if (total_time == -1){
+    return (0)
+  }
+  else {
+ 
+    SEL_BUS_SVC <- BUS_SVC_DF %>% filter(Service_No == BUS_SVC & Direction == DIR)
+
+    if (HOUR >= 19){
+      time <- strsplit(SEL_BUS_SVC$PM_OffPeak_Freq, "-")
+      freq <- (as.numeric(time[[1]][1]) + as.numeric(time[[1]][2])) / 2
+      
+      bph <- total_time / freq
+    }
+    else if(HOUR >= 17 && HOUR < 19){
+      time <- strsplit(SEL_BUS_SVC$PM_Peak_Freq, "-")
+      freq <- (as.numeric(time[[1]][1]) + as.numeric(time[[1]][2])) / 2
+      
+      bph <- total_time / freq
+    }
+    else if(HOUR >= 9 && HOUR < 17){
+      time <- strsplit(SEL_BUS_SVC$AM_OffPeak_Freq, "-")
+      freq <- (as.numeric(time[[1]][1]) + as.numeric(time[[1]][2])) / 2
+      
+      bph <- total_time / freq
+    }    
+    else if(HOUR == 8){
+      time <- strsplit(SEL_BUS_SVC$AM_Peak_Freq, "-")
+      freq1 <- (as.numeric(time[[1]][1]) + as.numeric(time[[1]][2])) / 2
+      time <- strsplit(SEL_BUS_SVC$AM_OffPeak_Freq, "-")
+      freq2 <- (as.numeric(time[[1]][1]) + as.numeric(time[[1]][2])) / 2
+    
+      if (total_time <= 30){
+        bph <- total_time / freq1
+      }
+      else{
+        temp_bph <- total_time / freq1
+        bph <- ((((total_time - 30) / freq2) + temp_bph) / 2)
+      }
+    }        
+    else if(HOUR == 7){
+      time <- strsplit(SEL_BUS_SVC$AM_Peak_Freq, "-")
+      freq <- (as.numeric(time[[1]][1]) + as.numeric(time[[1]][2])) / 2
+
+      bph <- total_time / freq
+    }  
+    else if(HOUR == 6){
+      time <- strsplit(SEL_BUS_SVC$AM_Peak_Freq, "-")
+      freq1 <- as.numeric(time[[1]][2])
+      time <- strsplit(SEL_BUS_SVC$AM_Peak_Freq, "-")
+      freq2 <- (as.numeric(time[[1]][1]) + as.numeric(time[[1]][2])) / 2
+    
+      if (total_time <= 30){
+        bph <- total_time / freq1
+      }
+      else{
+        temp_bph <- total_time / freq1
+        bph <- ((((total_time - 30) / freq2) + temp_bph) / 2)
+      }
+    }  
+    else if(HOUR >= 4 && HOUR < 6){
+      time <- strsplit(SEL_BUS_SVC$AM_Peak_Freq, "-")
+      freq <- as.numeric(time[[1]][2])
+      
+      bph <- total_time / freq
+    }  
+    return (bph)
+    
+  }
+  
+}
+
+norm_bph_bs_operational <- function(BUS_SVC, DIR, HOUR, NUM_DAY_OF_WEEK, BS_CODE_ORIGIN, BS_SEQ_ORIGIN){
+  # BS_SEQ_ORIGIN verifies that it is the correct bus stop (eg. starting stop instead of ending terminus)
+  SEL_BUS_ROUTE <- BUS_ROUTE_DF %>% filter(Service_No == BUS_SVC & BS_Code == BS_CODE_ORIGIN & Direction == DIR & Seq == BS_SEQ_ORIGIN)
+  temp_timing <- -1
+  if (NUM_DAY_OF_WEEK > 0 & NUM_DAY_OF_WEEK < 6){
+    if (is.na(SEL_BUS_ROUTE$WD_FirstBus)){
+      return (-1)
+    }
+    if (SEL_BUS_ROUTE$WD_LastBus < 3 * 100){
+      WD_LastBus <- 2400 + SEL_BUS_ROUTE$WD_LastBus
+    }
+    else{
+      WD_LastBus <- SEL_BUS_ROUTE$WD_LastBus
+    }
+    if ((SEL_BUS_ROUTE$WD_FirstBus < (as.numeric(HOUR) * 100)) && (WD_LastBus > as.numeric(HOUR) * 100)){
+      temp_timing <- WD_LastBus - as.numeric(HOUR) * 100 
+    }
+    else if ((SEL_BUS_ROUTE$WD_FirstBus == (as.numeric(HOUR) * 100)) && (WD_LastBus > as.numeric(HOUR) * 100)){
+      temp_timing <- as.numeric(HOUR) * 100 + 60 - SEL_BUS_ROUTE$WD_FirstBus
+    }
+    else if ((SEL_BUS_ROUTE$WD_FirstBus == (as.numeric(HOUR) * 100)) && (WD_LastBus == as.numeric(HOUR) * 100)){
+      temp_timing <- WD_LastBus - SEL_BUS_ROUTE$WD_FirstBus
+    }
+  } 
+  else if (NUM_DAY_OF_WEEK == 6){
+    if (is.na(SEL_BUS_ROUTE$SAT_FirstBus)){
+      return (-1)
+    }
+    if (SEL_BUS_ROUTE$SAT_LastBus < 3 * 100){
+      Sat_LastBus <- 2400 + SEL_BUS_ROUTE$SAT_LastBus
+    }
+    else{
+      Sat_LastBus <- SEL_BUS_ROUTE$SAT_LastBus
+    }
+    if ((SEL_BUS_ROUTE$SAT_FirstBus < (as.numeric(HOUR) * 100)) && (Sat_LastBus > as.numeric(HOUR) * 100)){
+      temp_timing <- Sat_LastBus - as.numeric(HOUR) * 100
+    }
+    else if ((SEL_BUS_ROUTE$SAT_FirstBus == (as.numeric(HOUR) * 100)) && (Sat_LastBus > as.numeric(HOUR) * 100)){
+      temp_timing <- as.numeric(HOUR) * 100 + 60 - SEL_BUS_ROUTE$SAT_FirstBus
+    }
+    else if ((SEL_BUS_ROUTE$SAT_FirstBus == (as.numeric(HOUR) * 100)) && (Sat_LastBus == as.numeric(HOUR) * 100)){
+      temp_timing <- Sat_LastBus - SEL_BUS_ROUTE$SAT_FirstBus
+    }
+  } 
+  else if (NUM_DAY_OF_WEEK == 7){
+    if (is.na(SEL_BUS_ROUTE$SUN_FirstBus)){
+      return (-1)
+    }
+    if (SEL_BUS_ROUTE$SUN_LastBus < 3 * 100){
+      Sun_LastBus <- 2400 + SEL_BUS_ROUTE$SUN_LastBus
+    }
+    else{
+      Sun_LastBus <- SEL_BUS_ROUTE$SUN_LastBus
+    }
+    if ((SEL_BUS_ROUTE$SUN_FirstBus < (as.numeric(HOUR) * 100)) && (Sun_LastBus > as.numeric(HOUR) * 100)){
+      temp_timing <- Sun_LastBus - as.numeric(HOUR) * 100
+    }
+    else if ((SEL_BUS_ROUTE$SUN_FirstBus == (as.numeric(HOUR) * 100)) && (Sun_LastBus > as.numeric(HOUR) * 100)){
+      temp_timing <- as.numeric(HOUR) * 100 + 60 - SEL_BUS_ROUTE$SUN_FirstBus
+    }
+    else if ((SEL_BUS_ROUTE$SUN_FirstBus == (as.numeric(HOUR) * 100)) && (Sun_LastBus == as.numeric(HOUR) * 100)){
+      temp_timing <- Sun_LastBus - SEL_BUS_ROUTE$SUN_FirstBus
+    }
+  }
+  
+  if (temp_timing > 60){
+    return (60)
+  }
+  else{
+    return (temp_timing)
+  }
+}
+
+norm_common_bus_svcs <- function(BS_CODE_ORIGIN, BS_CODE_DEST){
+  TEMP_BUS_ROUTE_DF <- BUS_ROUTE_DF[1:5]
+  # Filter ensures correct pairs are selected (in event of start/end stop same) and filters out inaccurate data where stops are recorded in reverse (eg. 167 Nov 8am Weekday data between 3218 and 3129)
+  TEMP_BUS_ROUTE_DF <- left_join(TEMP_BUS_ROUTE_DF, TEMP_BUS_ROUTE_DF, by=c("Service_No", "Direction"), suffix=c("Origin", "Dest")) %>% filter(SeqOrigin < SeqDest)
+  
+  TEMP_BUS_ROUTE_OD_PAIR <- TEMP_BUS_ROUTE_DF %>% filter(BS_CodeOrigin == BS_CODE_ORIGIN & BS_CodeDest == BS_CODE_DEST)
+}
+
+norm_verify_express <- function(BUS_SVC, DIR){
+  SEL_BUS_SVC <- BUS_SVC_DF %>% filter(Service_No == BUS_SVC & DIR == Direction)
+  BUS_CAT <- c("CITY_LINK", "EXPRESS")
+  if (SEL_BUS_SVC$Category %in% BUS_CAT){
+    return (FALSE)
+  }
+  return (TRUE)
+}
+
+norm_calc_bph <- function(BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WEEK, SVC){
+  common_svcs <- norm_common_bus_svcs(BS_CODE_ORIGIN, BS_CODE_DEST)
+  common_svcs <- common_svcs %>% mutate(mileage = DistanceDest - DistanceOrigin)
+  mean_mileage <- mean(common_svcs$mileage)
+  
+  bph_total <- 0
+  bph_svc <- 0
+  
+  # if no rows (ie. all invalid data, dont run bph)
+  if (nrow(common_svcs) > 0){
+    for (i in 1:nrow(common_svcs)) {
+      if (common_svcs[i,]$mileage <= mean_mileage + 3){
+        temp_bph <- norm_bph(common_svcs[i,]$Service_No, common_svcs[i,]$Direction, HOUR, NUM_DAY_OF_WEEK, BS_CODE_ORIGIN, common_svcs[i,]$SeqOrigin)
+        if (common_svcs[i,]$Service_No == SVC){
+          bph_svc <- temp_bph
+          bph_total <- bph_total + temp_bph
+        }
+        # Let us verify for express service
+        else if (common_svcs[i,]$mileage <= 5){
+          if (norm_verify_express(common_svcs[i,]$Service_No, common_svcs[i,]$Direction)){
+            bph_total <- bph_total + temp_bph
+          }
+        }
+        else{
+          bph_total <- bph_total + temp_bph
+        }
+      }
+    }
+  }
+  
+  bph <- list(bph_svc, bph_total)
+  
+  return (bph)
+}
+
+
+norm_flow_od <- function(FLOW, BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WEEK, SVC){
+  bph <- norm_calc_bph(BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WEEK, SVC)
+  bph_svc <- bph[[1]]
+  bph_total <- bph[[2]]
+  svc_flow <- FLOW * (bph_svc / bph_total)
+  if (is.nan(svc_flow)){
+    return (0)
+  }
+  return (svc_flow)
+}
+```
+
+## Generating Flows
+
+```{r}
+
+gen_od_timing_flows <- function(input_OD, sf_bs, timing){ 
   OD_TEST_DIR1 <- input_OD %>% filter(DAY_TYPE == "WEEKDAY" & TIME_PER_HOUR == timing)
+  
+  #norm_flow_od <- function(FLOW, BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WEEK, SVC){
+  OD_TEST_DIR1 <- OD_TEST_DIR1 %>% rowwise() %>%  mutate(NORM_TRIPS = (norm_flow_od(TOTAL_TRIPS, ORIGIN_PT_CODE, DESTINATION_PT_CODE, TIME_PER_HOUR, 1, "167")))
 
-  OD_2023_11_DIR1_SZ <- left_join(OD_TEST_DIR1 , sf_bs,
-              by = c("ORIGIN_PT_CODE" = "BS_Code")) %>%
-    rename(ORIGIN_BS = ORIGIN_PT_CODE,
-           ORIGIN_PA = PLN_AREA_C,
-           DESTIN_BS = DESTINATION_PT_CODE)
+  OD_2023_11_DIR1 <- left_join(OD_TEST_DIR1 , sf_bs, by = c("ORIGIN_PT_CODE" = "BS_Code")) %>% rename(ORIGIN_BS = ORIGIN_PT_CODE, ORIGIN_PA = PLN_AREA_C, DESTIN_BS = DESTINATION_PT_CODE)
   
-  OD_2023_11_DIR1_SZ <- left_join(OD_2023_11_DIR1_SZ , sf_bs,
-              by = c("DESTIN_BS" = "BS_Code")) 
+  OD_2023_11_DIR1 <- left_join(OD_2023_11_DIR1 , sf_bs, by = c("DESTIN_BS" = "BS_Code"))
   
-  OD_2023_11_DIR1_SZ <- OD_2023_11_DIR1_SZ %>%
-    rename(DESTIN_PA = PLN_AREA_C) %>%
-    drop_na() %>%
-    group_by(ORIGIN_PA, DESTIN_PA) %>%
-    summarise(SZ_TRIPS = sum(TOTAL_TRIPS))  
-  
-  return (OD_2023_11_DIR1_SZ)
+  return (OD_2023_11_DIR1) 
 }
 
-gen_od_timing_SZ_intra <- function(OD_2023_11_DIR1_SZ){
-  OD_2023_11_DIR1_SZ_INTRA <- OD_2023_11_DIR1_SZ[OD_2023_11_DIR1_SZ$ORIGIN_PA!=OD_2023_11_DIR1_SZ$DESTIN_PA,]
-  return (OD_2023_11_DIR1_SZ_INTRA)
+gen_od_timing_PA <- function(OD_2023_11_DIR1_PA){ 
+
+    OD_2023_11_DIR1_PA <- OD_2023_11_DIR1_PA %>% rename(DESTIN_PA = PLN_AREA_C) %>% drop_na() %>% group_by(ORIGIN_PA, DESTIN_PA) %>% summarise(PA_TRIPS = sum(NORM_TRIPS))
+
+return (OD_2023_11_DIR1_PA) 
 }
 
-gen_od_timing_SZ_inter <- function(OD_2023_11_DIR1_SZ){
-  OD_2023_11_DIR1_SZ_INTER <- OD_2023_11_DIR1_SZ[OD_2023_11_DIR1_SZ$ORIGIN_PA==OD_2023_11_DIR1_SZ$DESTIN_PA,]
-  return (OD_2023_11_DIR1_SZ_INTER)
+gen_od_timing_PA_intra <- function(OD_2023_11_DIR1_PA){ 
+  OD_2023_11_DIR1_PA_INTRA <- OD_2023_11_DIR1_PA[OD_2023_11_DIR1_PA$ORIGIN_PA!=OD_2023_11_DIR1_PA$DESTIN_PA,] 
+  return (OD_2023_11_DIR1_PA_INTRA) 
 }
 
-gen_od_timing_SZ_flows <- function(OD_2023_11_DIR1_SZ_INTRA){
+gen_od_timing_PA_inter <- function(OD_2023_11_DIR1_PA){ 
+  OD_2023_11_DIR1_PA_INTER <- OD_2023_11_DIR1_PA[OD_2023_11_DIR1_PA$ORIGIN_PA==OD_2023_11_DIR1_PA$DESTIN_PA,] 
+  return (OD_2023_11_DIR1_PA_INTER) 
+}
 
-  sf_OD_2023_11_DIR1_SZ_INTRA_FLOWS <- od2line(flow = OD_2023_11_DIR1_SZ_INTRA, 
-                      zones = mpsz_pln_area,
-                      zone_code = "PLN_AREA_C")  
-  
-  return (sf_OD_2023_11_DIR1_SZ_INTRA_FLOWS)
+gen_od_timing_PA_flows <- function(OD_2023_11_DIR1_PA_INTRA){
+
+sf_OD_2023_11_DIR1_PA_INTRA_FLOWS <- od2line(flow = OD_2023_11_DIR1_PA_INTRA, zones = mpsz_pln_area, zone_code = "PLN_AREA_C")
+
+return (sf_OD_2023_11_DIR1_PA_INTRA_FLOWS) 
+} 
+tmap_plot_pa <- function(BS, OD) { 
+  tmap_mode("view") 
+  tm_shape(mpsz_pln_area) + 
+    tm_polygons("PLN_AREA_C", legend.show = FALSE, palette="Set3") + 
+  tm_shape(BS) + 
+    tm_dots("PLN_AREA_C", scale = 1.3, legend.show = FALSE, palette="Set3") + 
+  #tm_shape(sf_BS_167_DIR_2) + 
+    # tm_dots(col = "blue", scale = 2) + 
+  tm_shape(OD) + 
+    tm_lines(col = "PA_TRIPS", style="fixed", breaks = c(0, 1, 5, 10, 15, 25, 50, 80, 130, 250), lwd = "PA_TRIPS", scale=20, palette="viridis") 
+} 
+
+plot_trip_summary <- function(OD){ 
+  summary(OD$NORM_TRIPS) 
+  p <- ggplot(OD, aes(x=NORM_TRIPS)) + geom_histogram(binwidth=25) + xlim(0, 500) + ylim(0, 50)
+  ggplotly(p) 
 }
-tmap_plot_sz <- function(BS, OD) {
-  tmap_mode("view")
-  tm_shape(mpsz_pln_area) +
-    tm_polygons("PLN_AREA_C", legend.show = FALSE, palette="Set3") +
-  tm_shape(BS) +
-    tm_dots("PLN_AREA_C", scale = 1.3, legend.show = FALSE, palette="Set3") +
-  #tm_shape(sf_BS_167_DIR_2) +
-  #  tm_dots(col = "blue", scale = 2) +
-  tm_shape(OD) +
-    tm_lines(col = "SZ_TRIPS", style="fixed", breaks = c(0, 25, 50, 100, 250, 500, 700, 1000, 1500, 2500), lwd = "SZ_TRIPS", scale=15, palette="viridis")
-}
-plot_trip_summary <- function(OD){
-  summary(OD$SZ_TRIPS)
-  p <- ggplot(OD, aes(x=SZ_TRIPS)) + 
-    geom_histogram(binwidth=100) +
-    xlim(0, 2500) +
-    ylim(0, 400)
-  
-  ggplotly(p)
-}
+```
+
+Pre-generate results
+
+```{r eval=FALSE}
+temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 6)
+saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_6.rds")
+temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 7)
+saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_7.rds")
+temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 8)
+saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_8.rds")
+temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 9)
+saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_9.rds")
+temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 10)
+saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_10.rds")
+temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 11)
+saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_11.rds")
+temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 12)
+saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_12.rds")
+temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 18)
+saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_18.rds")
+temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 19)
+saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_19.rds")
+temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 20)
+saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_20.rds")
+
 ```
 
 ::: panel-tabset
@@ -424,170 +773,170 @@ For OD Count Data on Weekday, divide total trip value by 21 (21 weekdays excl PH
 
 ```{r}
 tmap_options(check.and.fix = TRUE)
-temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 6)
+temp_sf <- readRDS("data/167_OD_Analysis/sf_norm_6.rds")
+temp_sf_pa <- gen_od_timing_PA(temp_sf)
+temp_sf_pa_intra <- gen_od_timing_PA_intra(temp_sf_pa)
+temp_sf_pa_inter <- gen_od_timing_PA_inter(temp_sf_pa)
+temp_sf_pa_intra_flows <- gen_od_timing_PA_flows(temp_sf_pa_intra)
 
-temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
-temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
-temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+tmap_plot_pa(sf_BS_167_DIR_1_MPSZ, temp_sf_pa_intra_flows)
+st_drop_geometry(temp_sf_pa_intra_flows) %>% arrange(desc(PA_TRIPS))
 
-tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
-temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
-
-plot_trip_summary(temp_sf_sz_intra_flows)
-temp_sf_sz_inter
+plot_trip_summary(temp_sf)
+temp_sf_pa_inter %>% arrange(desc(PA_TRIPS))
 ```
 
 ## 7am
 
 ```{r}
 tmap_options(check.and.fix = TRUE)
-temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 7)
+temp_sf <- readRDS("data/167_OD_Analysis/sf_norm_7.rds")
+temp_sf_pa <- gen_od_timing_PA(temp_sf)
+temp_sf_pa_intra <- gen_od_timing_PA_intra(temp_sf_pa)
+temp_sf_pa_inter <- gen_od_timing_PA_inter(temp_sf_pa)
+temp_sf_pa_intra_flows <- gen_od_timing_PA_flows(temp_sf_pa_intra)
 
-temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
-temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
-temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+tmap_plot_pa(sf_BS_167_DIR_1_MPSZ, temp_sf_pa_intra_flows)
+st_drop_geometry(temp_sf_pa_intra_flows)  %>% arrange(desc(PA_TRIPS))
 
-tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
-temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
-
-plot_trip_summary(temp_sf_sz_intra_flows)
-temp_sf_sz_inter
+plot_trip_summary(temp_sf)
+temp_sf_pa_inter %>% arrange(desc(PA_TRIPS))
 ```
 
 ## 8am
 
 ```{r}
 tmap_options(check.and.fix = TRUE)
-temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 8)
+temp_sf <- readRDS("data/167_OD_Analysis/sf_norm_8.rds")
+temp_sf_pa <- gen_od_timing_PA(temp_sf)
+temp_sf_pa_intra <- gen_od_timing_PA_intra(temp_sf_pa)
+temp_sf_pa_inter <- gen_od_timing_PA_inter(temp_sf_pa)
+temp_sf_pa_intra_flows <- gen_od_timing_PA_flows(temp_sf_pa_intra)
 
-temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
-temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
-temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+tmap_plot_pa(sf_BS_167_DIR_1_MPSZ, temp_sf_pa_intra_flows)
+st_drop_geometry(temp_sf_pa_intra_flows)  %>% arrange(desc(PA_TRIPS))
 
-tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
-temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
-
-plot_trip_summary(temp_sf_sz_intra_flows)
-temp_sf_sz_inter
+plot_trip_summary(temp_sf)
+temp_sf_pa_inter %>% arrange(desc(PA_TRIPS))
 ```
 
 ## 9am
 
 ```{r}
 tmap_options(check.and.fix = TRUE)
-temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 9)
+temp_sf <- readRDS("data/167_OD_Analysis/sf_norm_9.rds")
+temp_sf_pa <- gen_od_timing_PA(temp_sf)
+temp_sf_pa_intra <- gen_od_timing_PA_intra(temp_sf_pa)
+temp_sf_pa_inter <- gen_od_timing_PA_inter(temp_sf_pa)
+temp_sf_pa_intra_flows <- gen_od_timing_PA_flows(temp_sf_pa_intra)
 
-temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
-temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
-temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+tmap_plot_pa(sf_BS_167_DIR_1_MPSZ, temp_sf_pa_intra_flows)
+st_drop_geometry(temp_sf_pa_intra_flows)  %>% arrange(desc(PA_TRIPS))
 
-tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
-temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
-
-plot_trip_summary(temp_sf_sz_intra_flows)
-temp_sf_sz_inter
+plot_trip_summary(temp_sf)
+temp_sf_pa_inter %>% arrange(desc(PA_TRIPS))
 ```
 
 ## 10am
 
 ```{r}
 tmap_options(check.and.fix = TRUE)
-temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 10)
+temp_sf <- readRDS("data/167_OD_Analysis/sf_norm_10.rds")
+temp_sf_pa <- gen_od_timing_PA(temp_sf)
+temp_sf_pa_intra <- gen_od_timing_PA_intra(temp_sf_pa)
+temp_sf_pa_inter <- gen_od_timing_PA_inter(temp_sf_pa)
+temp_sf_pa_intra_flows <- gen_od_timing_PA_flows(temp_sf_pa_intra)
 
-temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
-temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
-temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+tmap_plot_pa(sf_BS_167_DIR_1_MPSZ, temp_sf_pa_intra_flows)
+st_drop_geometry(temp_sf_pa_intra_flows)  %>% arrange(desc(PA_TRIPS))
 
-tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
-temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
-
-plot_trip_summary(temp_sf_sz_intra_flows)
-temp_sf_sz_inter
+plot_trip_summary(temp_sf)
+temp_sf_pa_inter %>% arrange(desc(PA_TRIPS))
 ```
 
 ## 11am
 
 ```{r}
 tmap_options(check.and.fix = TRUE)
-temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 11)
+temp_sf <- readRDS("data/167_OD_Analysis/sf_norm_11.rds")
+temp_sf_pa <- gen_od_timing_PA(temp_sf)
+temp_sf_pa_intra <- gen_od_timing_PA_intra(temp_sf_pa)
+temp_sf_pa_inter <- gen_od_timing_PA_inter(temp_sf_pa)
+temp_sf_pa_intra_flows <- gen_od_timing_PA_flows(temp_sf_pa_intra)
 
-temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
-temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
-temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+tmap_plot_pa(sf_BS_167_DIR_1_MPSZ, temp_sf_pa_intra_flows)
+st_drop_geometry(temp_sf_pa_intra_flows)  %>% arrange(desc(PA_TRIPS))
 
-tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
-temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
-
-plot_trip_summary(temp_sf_sz_intra_flows)
-temp_sf_sz_inter
+plot_trip_summary(temp_sf)
+temp_sf_pa_inter %>% arrange(desc(PA_TRIPS))
 ```
 
 ## 12pm
 
 ```{r}
 tmap_options(check.and.fix = TRUE)
-temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 12)
+temp_sf <- readRDS("data/167_OD_Analysis/sf_norm_12.rds")
+temp_sf_pa <- gen_od_timing_PA(temp_sf)
+temp_sf_pa_intra <- gen_od_timing_PA_intra(temp_sf_pa)
+temp_sf_pa_inter <- gen_od_timing_PA_inter(temp_sf_pa)
+temp_sf_pa_intra_flows <- gen_od_timing_PA_flows(temp_sf_pa_intra)
 
-temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
-temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
-temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+tmap_plot_pa(sf_BS_167_DIR_1_MPSZ, temp_sf_pa_intra_flows)
+st_drop_geometry(temp_sf_pa_intra_flows)  %>% arrange(desc(PA_TRIPS))
 
-tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
-temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
-
-plot_trip_summary(temp_sf_sz_intra_flows)
-temp_sf_sz_inter
+plot_trip_summary(temp_sf)
+temp_sf_pa_inter %>% arrange(desc(PA_TRIPS))
 ```
 
 ## 6pm
 
 ```{r}
 tmap_options(check.and.fix = TRUE)
-temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 18)
+temp_sf <- readRDS("data/167_OD_Analysis/sf_norm_18.rds")
+temp_sf_pa <- gen_od_timing_PA(temp_sf)
+temp_sf_pa_intra <- gen_od_timing_PA_intra(temp_sf_pa)
+temp_sf_pa_inter <- gen_od_timing_PA_inter(temp_sf_pa)
+temp_sf_pa_intra_flows <- gen_od_timing_PA_flows(temp_sf_pa_intra)
 
-temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
-temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
-temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+tmap_plot_pa(sf_BS_167_DIR_1_MPSZ, temp_sf_pa_intra_flows)
+st_drop_geometry(temp_sf_pa_intra_flows)  %>% arrange(desc(PA_TRIPS))
 
-tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
-temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
-
-plot_trip_summary(temp_sf_sz_intra_flows)
-temp_sf_sz_inter
+plot_trip_summary(temp_sf)
+temp_sf_pa_inter %>% arrange(desc(PA_TRIPS))
 ```
 
 ## 7pm
 
 ```{r}
 tmap_options(check.and.fix = TRUE)
-temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 19)
+temp_sf <- readRDS("data/167_OD_Analysis/sf_norm_19.rds")
+temp_sf_pa <- gen_od_timing_PA(temp_sf)
+temp_sf_pa_intra <- gen_od_timing_PA_intra(temp_sf_pa)
+temp_sf_pa_inter <- gen_od_timing_PA_inter(temp_sf_pa)
+temp_sf_pa_intra_flows <- gen_od_timing_PA_flows(temp_sf_pa_intra)
 
-temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
-temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
-temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+tmap_plot_pa(sf_BS_167_DIR_1_MPSZ, temp_sf_pa_intra_flows)
+st_drop_geometry(temp_sf_pa_intra_flows)  %>% arrange(desc(PA_TRIPS))
 
-tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
-temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
-
-plot_trip_summary(temp_sf_sz_intra_flows)
-temp_sf_sz_inter
+plot_trip_summary(temp_sf)
+temp_sf_pa_inter %>% arrange(desc(PA_TRIPS))
 ```
 
 ## 8pm
 
 ```{r}
 tmap_options(check.and.fix = TRUE)
-temp_sf_sz <- gen_od_timing_SZ(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 20)
+temp_sf <- readRDS("data/167_OD_Analysis/sf_norm_20.rds")
+temp_sf_pa <- gen_od_timing_PA(temp_sf)
+temp_sf_pa_intra <- gen_od_timing_PA_intra(temp_sf_pa)
+temp_sf_pa_inter <- gen_od_timing_PA_inter(temp_sf_pa)
+temp_sf_pa_intra_flows <- gen_od_timing_PA_flows(temp_sf_pa_intra)
 
-temp_sf_sz_intra <- gen_od_timing_SZ_intra(temp_sf_sz)
-temp_sf_sz_inter <- gen_od_timing_SZ_inter(temp_sf_sz)
-temp_sf_sz_intra_flows <- gen_od_timing_SZ_flows(temp_sf_sz_intra)
+tmap_plot_pa(sf_BS_167_DIR_1_MPSZ, temp_sf_pa_intra_flows)
+st_drop_geometry(temp_sf_pa_intra_flows)  %>% arrange(desc(PA_TRIPS))
 
-tmap_plot_sz(sf_BS_167_DIR_1_MPSZ, temp_sf_sz_intra_flows)
-temp_sf_sz_intra_flows %>% arrange(desc(SZ_TRIPS))
-
-plot_trip_summary(temp_sf_sz_intra_flows)
-temp_sf_sz_inter
+plot_trip_summary(temp_sf)
+temp_sf_pa_inter %>% arrange(desc(PA_TRIPS))
 ```
 :::
 
@@ -599,6 +948,6 @@ Todo list:
 
     -   Sequential trial and error, might be worthwhile to check off peak trends as well - without data cannot determine which user group but maybe can guess?
 
--   K-means clustering on types of stops based on temporal data - each stop, pattern based on day type
+-   K-means clustering on types of stops based on temporal data - each stop, pattern based on day type \[probably seperate article\]
 
 -   
