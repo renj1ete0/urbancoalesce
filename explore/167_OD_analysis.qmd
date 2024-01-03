@@ -617,9 +617,10 @@ norm_bph_bs_operational <- function(BUS_SVC, DIR, HOUR, NUM_DAY_OF_WEEK, BS_CODE
 norm_common_bus_svcs <- function(BS_CODE_ORIGIN, BS_CODE_DEST){
   TEMP_BUS_ROUTE_DF <- BUS_ROUTE_DF[1:5]
   # Filter ensures correct pairs are selected (in event of start/end stop same) and filters out inaccurate data where stops are recorded in reverse (eg. 167 Nov 8am Weekday data between 3218 and 3129)
-  TEMP_BUS_ROUTE_DF <- left_join(TEMP_BUS_ROUTE_DF, TEMP_BUS_ROUTE_DF, by=c("Service_No", "Direction"), suffix=c("Origin", "Dest")) %>% filter(SeqOrigin < SeqDest)
+  TEMP_BUS_ROUTE_DF <- left_join(TEMP_BUS_ROUTE_DF, TEMP_BUS_ROUTE_DF, by=c("Service_No", "Direction"), suffix=c("Origin", "Dest"))
   
-  TEMP_BUS_ROUTE_OD_PAIR <- TEMP_BUS_ROUTE_DF %>% filter(BS_CodeOrigin == BS_CODE_ORIGIN & BS_CodeDest == BS_CODE_DEST)
+  TEMP_BUS_ROUTE_OD_PAIR <- TEMP_BUS_ROUTE_DF %>% filter(BS_CodeOrigin == BS_CODE_ORIGIN & BS_CodeDest == BS_CODE_DEST & SeqOrigin < SeqDest)
+  return (TEMP_BUS_ROUTE_OD_PAIR)
 }
 
 norm_verify_express <- function(BUS_SVC, DIR){
