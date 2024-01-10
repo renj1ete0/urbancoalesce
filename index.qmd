@@ -52,7 +52,7 @@ This site is still a work in progress!
 ------------------------------------------------------------------------
 
 ::: panel-tabset
-## Highlights
+## Projects and Highlights
 
 -   xx
 
@@ -70,7 +70,7 @@ This site is still a work in progress!
 
 -   **Geography** and **Transport Studies**
 
-    -   Urban Transformation, Sustainability, Transport Policy, Transport and Social Psychology
+    -   Urban Transformation, Transport Policy, Transport and Social Psychology
 
 **Dip Architecture** - Singapore Polytechnic (2016 - 2019)
 
@@ -78,11 +78,7 @@ This site is still a work in progress!
 
     -   Built Environment, Architecture, Sustainability
 
-## Key Projects
-
--   xx
-
-## Work Experience
+## Experience
 
 **Data Science Intern** - Urban Redevelopment Authority of Singapore (May 2023 - July 2023)
 

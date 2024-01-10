@@ -47,7 +47,7 @@ pacman::p_load(dplyr, readr, sf, tidyverse, tmap, sfdep, ggpubr, Metrics, ggplot
 ## Data Sources
 
 | Dataset Name                                               | Source                                                                                          | Methodology |
-|---------------------|----------------------------------|-----------------|
+|------------------------------------------------------------|-------------------------------------------------------------------------------------------------|-------------|
 | Origin-Destination Passenger Count for Buses (OD) Nov 2023 | [[LTA Datamall]{.underline}](https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html) | API         |
 | Bus Routes as of 26 Nov 2023                               | [LTA Datamall](https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html)               | API         |
 | Bus Stops as of 26 Nov 2023                                | [LTA Datamall](https://datamall.lta.gov.sg/content/datamall/en/dynamic-data.html)               | API         |
@@ -176,6 +176,11 @@ Extracting the Direction 1 OD Data
 
 ```{r}
 OD_2023_11_DIR1 <- OD_2023_11 %>% filter(OD_2023_11$ORIGIN_PT_CODE %in% BS_167_DIR_1_DF$BS_Code & OD_2023_11$DESTINATION_PT_CODE %in% BS_167_DIR_1_DF$BS_Code)
+
+OD_2023_11_DIR1 <- left_join(OD_2023_11_DIR1, BS_167_DIR_1_DF[1:2], by=c("ORIGIN_PT_CODE" = "BS_Code")) %>% rename(OriginSeq = Seq)
+OD_2023_11_DIR1 <- left_join(OD_2023_11_DIR1, BS_167_DIR_1_DF[1:2], by=c("DESTINATION_PT_CODE" = "BS_Code")) %>% rename(DestSeq = Seq)
+OD_2023_11_DIR1 <- OD_2023_11_DIR1 %>% filter(OriginSeq < DestSeq)
+OD_2023_11_DIR1 <- OD_2023_11_DIR1[1:7]
 ```
 
 Just to check if the number of bus stops extracted matches the number of stops we have
@@ -190,6 +195,11 @@ Extracting the Direction 2 OD Data
 
 ```{r}
 OD_2023_11_DIR2 <- OD_2023_11 %>% filter(OD_2023_11$ORIGIN_PT_CODE %in% BS_167_DIR_2_DF$BS_Code & OD_2023_11$DESTINATION_PT_CODE %in% BS_167_DIR_2_DF$BS_Code)
+
+OD_2023_11_DIR2 <- left_join(OD_2023_11_DIR2, BS_167_DIR_2_DF[1:2], by=c("ORIGIN_PT_CODE" = "BS_Code")) %>% rename(OriginSeq = Seq)
+OD_2023_11_DIR2 <- left_join(OD_2023_11_DIR2, BS_167_DIR_2_DF[1:2], by=c("DESTINATION_PT_CODE" = "BS_Code")) %>% rename(DestSeq = Seq)
+OD_2023_11_DIR2 <- OD_2023_11_DIR2 %>% filter(OriginSeq < DestSeq)
+OD_2023_11_DIR2 <- OD_2023_11_DIR2[1:7]
 ```
 
 Just to check if the number of bus stops extracted matches the number of stops we have
@@ -204,7 +214,7 @@ num_stops_OD_2 == nrow(BS_167_DIR_2_DF)
 
 We save information that is required for our analysis from JSON to DataFrame format
 
-```{r}
+```{r warning=FALSE}
 BUS_ROUTE_DF <- data.frame(Service_No = character(), Direction = integer(), Seq = integer(), BS_Code = integer(), Distance = double(), WD_FirstBus = integer(), WD_LastBus = integer(), SAT_FirstBus = integer(), SAT_LastBus = integer(), SUN_FirstBus = integer(), SUN_LastBus = integer())
 for (route in BUS_ROUTE){
   BS_RT_TEMP <- data.frame(ServiceNo = route$ServiceNo, Direction = as.numeric(route$Direction), Seq = as.numeric(route$StopSequence), BS_Code = as.numeric(route$BusStopCode), Distance = as.numeric(route$Distance), WD_FirstBus = as.numeric(route$WD_FirstBus), WD_LastBus = as.numeric(route$WD_LastBus), SAT_FirstBus = as.numeric(route$SAT_FirstBus), SAT_LastBus = as.numeric(route$SAT_LastBus), SUN_FirstBus = as.numeric(route$SUN_FirstBus), SUN_LastBus = as.numeric(route$SUN_LastBus))
@@ -620,6 +630,7 @@ norm_common_bus_svcs <- function(BS_CODE_ORIGIN, BS_CODE_DEST){
   TEMP_BUS_ROUTE_DF <- left_join(TEMP_BUS_ROUTE_DF, TEMP_BUS_ROUTE_DF, by=c("Service_No", "Direction"), suffix=c("Origin", "Dest"))
   
   TEMP_BUS_ROUTE_OD_PAIR <- TEMP_BUS_ROUTE_DF %>% filter(BS_CodeOrigin == BS_CODE_ORIGIN & BS_CodeDest == BS_CODE_DEST & SeqOrigin < SeqDest)
+  
   return (TEMP_BUS_ROUTE_OD_PAIR)
 }
 
@@ -632,7 +643,7 @@ norm_verify_express <- function(BUS_SVC, DIR){
   return (TRUE)
 }
 
-norm_calc_bph <- function(BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WEEK, SVC){
+norm_calc_bph <- function(BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WEEK, SVC, DIR){
   common_svcs <- norm_common_bus_svcs(BS_CODE_ORIGIN, BS_CODE_DEST)
   common_svcs <- common_svcs %>% mutate(mileage = DistanceDest - DistanceOrigin)
   mean_mileage <- mean(common_svcs$mileage)
@@ -668,8 +679,8 @@ norm_calc_bph <- function(BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WEEK, S
 }
 
 
-norm_flow_od <- function(FLOW, BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WEEK, SVC){
-  bph <- norm_calc_bph(BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WEEK, SVC)
+norm_flow_od <- function(FLOW, BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WEEK, SVC, DIR){
+  bph <- norm_calc_bph(BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WEEK, SVC, DIR)
   bph_svc <- bph[[1]]
   bph_total <- bph[[2]]
   svc_flow <- FLOW * (bph_svc / bph_total)
@@ -678,6 +689,10 @@ norm_flow_od <- function(FLOW, BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WE
   }
   return (svc_flow)
 }
+```
+
+```{r}
+norm_common_bus_svcs(10009, 58009)
 ```
 
 ## Generating Flows
@@ -940,6 +955,67 @@ plot_trip_summary(temp_sf)
 temp_sf_pa_inter %>% arrange(desc(PA_TRIPS))
 ```
 :::
+
+```{r}
+od_norm <- readRDS("data/167_OD_Analysis/sf_norm_7.rds")
+temp_bs_data <- BS_167_DIR_1_DF %>% arrange(BS_167_DIR_1_DF$Seq)
+
+bs_flow_norm <- data.frame(ORIGIN_BS = integer(), DESTIN_BS = integer(), TOTAL_TRIPS = double())
+
+current_bs <- temp_bs_data[1,]$BS_Code
+current_flow <- 0
+
+for (i in 2:nrow(temp_bs_data)){
+  next_bs <- temp_bs_data[i,]$BS_Code
+  
+  # Boarding Pax
+  temp_flow <- sum((od_norm %>% filter(ORIGIN_BS == current_bs))$NORM_TRIPS)
+  
+  if (is.na(temp_flow) == FALSE){
+    current_flow <- current_flow + temp_flow
+  }
+  
+  # Alighting Pax
+  temp_flow <- sum((od_norm %>% filter(DESTIN_BS == current_bs))$NORM_TRIPS)
+  
+  if (is.na(temp_flow) == FALSE){
+    current_flow <- current_flow - temp_flow
+  }
+  
+  bs_flow_norm_temp <- data.frame(ORIGIN_BS = current_bs, DESTIN_BS = next_bs, TOTAL_TRIPS = current_flow)
+  bs_flow_norm[nrow(bs_flow_norm) +1,] <- bs_flow_norm_temp  
+  current_bs <- next_bs
+}
+bs_flow_norm
+
+```
+
+```{r}
+gen_od_timing2 <- function(input_OD, sf_bs){
+  sf <- od_to_sf(input_OD, sf_bs)
+  
+  return (sf)
+}
+tmap_plot_route <- function(BS, OD) {
+  tmap_mode("view")
+  tm_shape(BS) +
+    tm_dots(col = "magenta", scale = 2) +
+  #tm_shape(sf_BS_167_DIR_2) +
+  #  tm_dots(col = "blue", scale = 2) +
+  tm_shape(OD) + 
+    tm_lines(col = "TOTAL_TRIPS", style="fixed", breaks = c(0, 1, 5, 10, 15, 25, 40, 60, 80, 100), lwd = "TOTAL_TRIPS", scale=15, palette="viridis") 
+} 
+
+plot_trip_summary <- function(OD){ 
+  summary(OD$TOTAL_TRIPS) 
+  p <- ggplot(OD, aes(x=TOTAL_TRIPS)) + geom_histogram(binwidth=25) + xlim(0, 500) + ylim(0, 50)
+  ggplotly(p) 
+}
+```
+
+```{r}
+tmap_plot_route(sf_BS_167_DIR_1, gen_od_timing2(bs_flow_norm, sf_BS_167_DIR_1))
+```
 
 Todo list:
 
