@@ -8,13 +8,16 @@ about:
   links:
     - icon: github
       text: GitHub
-      href: https://github.com/renjie-teo
+      href: https://github.com/renj1ete0
     - icon: linkedin
       text: LinkedIn
       href: https://www.linkedin.com/in/renjieteo/
-    - icon: email
+    - icon: envelope-fill
       text: Email
       href: mailto:renjieteo@outlook.com
+    - icon: journal-album
+      text: Geospatial Class Portfolio
+      href: https://renjieteo-is415.netlify.app/
 format:
   html:
     page-layout: full
