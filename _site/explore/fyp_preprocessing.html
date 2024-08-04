@@ -6,8 +6,11 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
+<meta name="author" content="Teo Ren Jie">
+<meta name="dcterms.date" content="2024-08-04">
+<meta name="description" content="Preprocesses OSM Building Data with HDB Property Information">
 
-<title>UrbanCoalesce - UrbanCoalesce // Explore</title>
+<title>UrbanCoalesce - Preprocessing of OSM Building Data (HDB)</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,6 +23,40 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -30,8 +67,6 @@ ul.task-list li input[type="checkbox"] {
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<script src="../site_libs/quarto-listing/list.min.js"></script>
-<script src="../site_libs/quarto-listing/quarto-listing.js"></script>
 <script src="../site_libs/quarto-html/quarto.js"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
 <script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -69,74 +104,17 @@ ul.task-list li input[type="checkbox"] {
     "search-label": "Search"
   }
 }</script>
-<script>
 
-  window.document.addEventListener("DOMContentLoaded", function (_event) {
-    const listingTargetEl = window.document.querySelector('#listing-listing .list');
-    if (!listingTargetEl) {
-      // No listing discovered, do not attach.
-      return; 
-    }
 
-    const options = {
-      valueNames: ['listing-image','listing-date','listing-title','listing-description','listing-author','listing-reading-time',{ data: ['index'] },{ data: ['categories'] },{ data: ['listing-date-sort'] }],
-      
-      searchColumns: ["listing-date","listing-title","listing-author","listing-image","listing-description","listing-categories"],
-    };
-
-    window['quarto-listings'] = window['quarto-listings'] || {};
-    window['quarto-listings']['listing-listing'] = new List('listing-listing', options);
-
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  });
-
-  window.addEventListener('hashchange',() => {
-    if (window['quarto-listing-loaded']) {
-      window['quarto-listing-loaded']();
-    }
-  })
-  </script>
-
-  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
-
-<script type="text/javascript">
-const typesetMath = (el) => {
-  if (window.MathJax) {
-    // MathJax Typeset
-    window.MathJax.typeset([el]);
-  } else if (window.katex) {
-    // KaTeX Render
-    var mathElements = el.getElementsByClassName("math");
-    var macros = [];
-    for (var i = 0; i < mathElements.length; i++) {
-      var texText = mathElements[i].firstChild;
-      if (mathElements[i].tagName == "SPAN") {
-        window.katex.render(texText.data, mathElements[i], {
-          displayMode: mathElements[i].classList.contains('display'),
-          throwOnError: false,
-          macros: macros,
-          fleqn: false
-        });
-      }
-    }
-  }
-}
-window.Quarto = {
-  typesetMath
-};
-</script>
-
-<meta property="og:title" content="UrbanCoalesce - UrbanCoalesce // Explore">
+<meta property="og:title" content="UrbanCoalesce - Preprocessing of OSM Building Data (HDB)">
+<meta property="og:description" content="Preprocesses OSM Building Data with HDB Property Information">
 <meta property="og:site_name" content="UrbanCoalesce">
 </head>
 
 <body class="nav-fixed">
 
 <div id="quarto-search-results"></div>
-  <header id="quarto-header" class="headroom fixed-top">
+  <header id="quarto-header" class="headroom fixed-top quarto-banner">
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
@@ -159,7 +137,7 @@ window.Quarto = {
 <span class="menu-text">Portfolio</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link active" href="../explore/index.html" aria-current="page"> 
+    <a class="nav-link" href="../explore/index.html"> 
 <span class="menu-text">Exploration</span></a>
   </li>  
   <li class="nav-item compact">
@@ -186,185 +164,265 @@ window.Quarto = {
     </nav>
 </header>
 <!-- content -->
-<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-full page-navbar">
+<header id="title-block-header" class="quarto-title-block default page-columns page-full">
+  <div class="quarto-title-banner page-columns page-full">
+    <div class="quarto-title column-body">
+      <h1 class="title">Preprocessing of OSM Building Data (HDB)</h1>
+                  <div>
+        <div class="description">
+          Preprocesses OSM Building Data with HDB Property Information
+        </div>
+      </div>
+                          <div class="quarto-categories">
+                <div class="quarto-category">Preprocessing</div>
+                <div class="quarto-category">Urban</div>
+                <div class="quarto-category">HDB</div>
+                <div class="quarto-category">Building</div>
+                <div class="quarto-category">R</div>
+              </div>
+                  </div>
+  </div>
+    
+  
+  <div class="quarto-title-meta">
+
+      <div>
+      <div class="quarto-title-meta-heading">Author</div>
+      <div class="quarto-title-meta-contents">
+               <p>Teo Ren Jie </p>
+            </div>
+    </div>
+      
+      <div>
+      <div class="quarto-title-meta-heading">Published</div>
+      <div class="quarto-title-meta-contents">
+        <p class="date">August 4, 2024</p>
+      </div>
+    </div>
+    
+      
+    </div>
+    
+  
+  </header><div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
 <!-- sidebar -->
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        
-    <h5 class="quarto-listing-category-title">Categories</h5><div class="quarto-listing-category category-cloud"><div class="category" data-category="167"><span class="quarto-category-count category-cloud-3">167</span></div><div class="category" data-category="Building"><span class="quarto-category-count category-cloud-3">Building</span></div><div class="category" data-category="Bus"><span class="quarto-category-count category-cloud-3">Bus</span></div><div class="category" data-category="HDB"><span class="quarto-category-count category-cloud-3">HDB</span></div><div class="category" data-category="Preprocessing"><span class="quarto-category-count category-cloud-3">Preprocessing</span></div><div class="category" data-category="Python"><span class="quarto-category-count category-cloud-3">Python</span></div><div class="category" data-category="R"><span class="quarto-category-count category-cloud-5">R</span></div><div class="category" data-category="Sample"><span class="quarto-category-count category-cloud-3">Sample</span></div><div class="category" data-category="Travel Pattern Analysis"><span class="quarto-category-count category-cloud-3">Travel Pattern Analysis</span></div><div class="category" data-category="Urban"><span class="quarto-category-count category-cloud-3">Urban</span></div></div></div>
-<!-- main -->
-<main class="content column-page-left" id="quarto-document-content">
-
-<header id="title-block-header" class="quarto-title-block default">
-<div class="quarto-title">
-<h1 class="title">UrbanCoalesce // Explore</h1>
-</div>
-
-
-
-<div class="quarto-title-meta column-page-left">
-
-    
-  
-    
-  </div>
-  
-
-
-</header>
-
-
-
-
-
-
-<div class="quarto-listing quarto-listing-container-default" id="listing-listing">
-<div class="listing-actions-group">
-   <div class="input-group input-group-sm quarto-listing-sort">
-     <span class="input-group-text"><i class="bi bi-sort-down"></i></span>
-     <select id="listing-listing-sort" class="form-select" aria-label="Order By" onchange="window['quarto-listings']['listing-listing'].sort(this.options[this.selectedIndex].value, { order: this.options[this.selectedIndex].getAttribute('data-direction')})">
-       <option value="" disabled="" selected="" hidden="">Order By</option>
-       <option value="index" data-direction="asc">Default</option>
-         <option value="listing-title" data-direction="asc">
-          Title
-        </option>
-         <option value="listing-date-sort" data-direction="asc">
-          Date - Oldest
-        </option>
-         <option value="listing-date-sort" data-direction="desc">
-          Date - Newest
-        </option>
-     </select>
-  </div>
-    <div class="input-group input-group-sm quarto-listing-filter">
-      <span class="input-group-text"><i class="bi bi-search"></i></span>
-      <input type="text" class="search form-control" placeholder="Filter">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">On this page</h2>
+   
+  <ul>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview"><span class="header-section-number">1</span> Overview</a>
+  <ul class="collapse">
+  <li><a href="#background" id="toc-background" class="nav-link" data-scroll-target="#background"><span class="header-section-number">1.1</span> Background</a></li>
+  </ul></li>
+  <li><a href="#getting-started" id="toc-getting-started" class="nav-link" data-scroll-target="#getting-started"><span class="header-section-number">2</span> Getting Started</a>
+  <ul class="collapse">
+  <li><a href="#setting-up" id="toc-setting-up" class="nav-link" data-scroll-target="#setting-up"><span class="header-section-number">2.1</span> Setting Up</a></li>
+  <li><a href="#data-sources" id="toc-data-sources" class="nav-link" data-scroll-target="#data-sources"><span class="header-section-number">2.2</span> Data Sources</a></li>
+  </ul></li>
+  <li><a href="#data-preparation" id="toc-data-preparation" class="nav-link" data-scroll-target="#data-preparation"><span class="header-section-number">3</span> Data Preparation</a>
+  <ul class="collapse">
+  <li><a href="#loading-data" id="toc-loading-data" class="nav-link" data-scroll-target="#loading-data"><span class="header-section-number">3.1</span> Loading Data</a></li>
+  </ul></li>
+  </ul>
+</nav>
     </div>
+<!-- main -->
+<main class="content quarto-banner-title-block" id="quarto-document-content">
+
+
+
+
+
+<section id="overview" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Overview</h1>
+<section id="background" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="background"><span class="header-section-number">1.1</span> Background</h2>
+<p>XX</p>
+</section>
+</section>
+<section id="getting-started" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Getting Started</h1>
+<section id="setting-up" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="setting-up"><span class="header-section-number">2.1</span> Setting Up</h2>
+<p>Packages required to be loaded for</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(dplyr, readr, sf, tidyverse, tmap, sfdep, ggplot2, plotly, spdep, rjson, osmextract, geojsonR, rvest, httr, jsonlite, onemapsgapi)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div class="list quarto-listing-default">
-<div class="quarto-post image-right" data-index="0" data-listing-file-modified-sort="1678695736000" data-listing-reading-time-sort="1" data-listing-word-count-sort="94">
-<div class="thumbnail">
-<p><a href="../explore/data/167_OD_analysis/MPSZ-2019.html" class="no-external"></a></p><a href="../explore/data/167_OD_analysis/MPSZ-2019.html" class="no-external">
-<div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
-</a><p><a href="../explore/data/167_OD_analysis/MPSZ-2019.html" class="no-external"></a></p>
+</section>
+<section id="data-sources" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="data-sources"><span class="header-section-number">2.2</span> Data Sources</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Dataset Name</th>
+<th>Source</th>
+<th>Methodology</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>HDB Existing Buildings</td>
+<td><a href="https://beta.data.gov.sg/datasets?resultId=d_16b157c52ed637edd6ba1232e026258d&amp;agencies=Housing+and+Development+Board+%28HDB%29"><u>Data.gov.sg</u></a></td>
+<td>Download</td>
+</tr>
+<tr class="even">
+<td>HDB Property Information (4 Aug 2024)</td>
+<td><a href="https://beta.data.gov.sg/datasets?resultId=d_17f5382f26140b1fdae0ba2ef6239d2f&amp;agencies=Housing+and+Development+Board+%28HDB%29">Data.gov.sg</a></td>
+<td>Download</td>
+</tr>
+<tr class="odd">
+<td>URA Master Plan 2019 Land Use (3 Jul 2023)</td>
+<td><a href="https://beta.data.gov.sg/datasets?query=master+plan+land+use&amp;resultId=d_f8adc7bd980dd15861c83ff370a72eaa">Data.gov.sg</a></td>
+<td>Download</td>
+</tr>
+<tr class="even">
+<td>Humanitarian OSM Team Buildings Dataset (1 July 2024)</td>
+<td><a href="https://data.humdata.org/dataset/hotosm_sgp_buildings?">HOTOSM</a></td>
+<td>Download</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="data-preparation" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Data Preparation</h1>
+<section id="loading-data" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="loading-data"><span class="header-section-number">3.1</span> Loading Data</h2>
+<p>Loading HDB Property Information (4 Aug 2024)</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>RAW_HDB_PROPERTY <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/fyp_preprocessing/HDBPropertyInformation.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="../explore/data/167_OD_analysis/MPSZ-2019.html" class="no-external"></a>
-</h3>
-<div class="listing-subtitle">
-<a href="../explore/data/167_OD_analysis/MPSZ-2019.html" class="no-external"></a>
+<p>Loading HDB Existing Buildings KML</p>
+<p><a href="https://stackoverflow.com/questions/50775357/how-to-read-in-kml-file-properly-in-r-or-separate-out-lumped-variables-into-col" class="uri">https://stackoverflow.com/questions/50775357/how-to-read-in-kml-file-properly-in-r-or-separate-out-lumped-variables-into-col</a></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>raw_hdb_bldgs <span class="ot">=</span> <span class="fu">st_read</span>(<span class="st">"data/fyp_preprocessing/HDBExistingBuilding.geojson"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Reading layer `HDBExistingBuilding' from data source 
+  `C:\Users\renji\OneDrive - Singapore Management University\0_git-projects\urbancoalesce\explore\data\fyp_preprocessing\HDBExistingBuilding.geojson' 
+  using driver `GeoJSON'
+Simple feature collection with 12847 features and 2 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY, XYZ
+Bounding box:  xmin: 103.6848 ymin: 1.270005 xmax: 103.989 ymax: 1.457245
+z_range:       zmin: 0 zmax: 0
+Geodetic CRS:  WGS 84</code></pre>
 </div>
-<div class="listing-description">
-<a href="../explore/data/167_OD_analysis/MPSZ-2019.html" class="no-external"><abstract></abstract> <links> <fees></fees> <encoding></encoding> <crs> <spatialrefsys nativeformat="Wkt"> <wkt></wkt> <proj4></proj4> <srsid>0</srsid> <srid>0</srid> <authid></authid> <description></description> <projectionacronym></projectionacronym> <ellipsoidacronym></ellipsoidacronym> <geographicflag>false</geographicflag> </spatialrefsys> </crs> <extent> </extent></links></a>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>attributes <span class="ot">&lt;-</span> <span class="fu">lapply</span>(<span class="at">X =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">nrow</span>(raw_hdb_bldgs), </span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>                     <span class="at">FUN =</span> <span class="cf">function</span>(x) {</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>                       raw_hdb_bldgs <span class="sc">%&gt;%</span> </span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>                         <span class="fu">slice</span>(x) <span class="sc">%&gt;%</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>                         <span class="fu">pull</span>(Description) <span class="sc">%&gt;%</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>                         <span class="fu">read_html</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>                         <span class="fu">html_node</span>(<span class="st">"table"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>                         <span class="fu">html_table</span>(<span class="at">header =</span> <span class="cn">TRUE</span>, <span class="at">trim =</span> <span class="cn">TRUE</span>, <span class="at">dec =</span> <span class="st">"."</span>, <span class="at">fill =</span> <span class="cn">TRUE</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>                         <span class="fu">as_tibble</span>(<span class="at">.name_repair =</span> <span class="sc">~</span> <span class="fu">make.names</span>(<span class="fu">c</span>(<span class="st">"Attribute"</span>, <span class="st">"Value"</span>))) <span class="sc">%&gt;%</span> </span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>                         <span class="fu">pivot_wider</span>(<span class="at">names_from =</span> Attribute, <span class="at">values_from =</span> Value)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>                     })</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>hdb_bldgs <span class="ot">&lt;-</span> </span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>  raw_hdb_bldgs <span class="sc">%&gt;%</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(<span class="fu">bind_rows</span>(attributes)) <span class="sc">%&gt;%</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>Description)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
+<p>Loading Humanitarian OSM Buildings Dataset (1 July 2024)</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>hotosm_bldgs <span class="ot">&lt;-</span> <span class="fu">st_read</span>(<span class="at">dsn =</span> <span class="st">"data/fyp_preprocessing/HOTOSM_BLDGS"</span>,</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>                   <span class="at">layer =</span> <span class="st">"hotosm_sgp_buildings_polygons_shp"</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Reading layer `hotosm_sgp_buildings_polygons_shp' from data source 
+  `C:\Users\renji\OneDrive - Singapore Management University\0_git-projects\urbancoalesce\explore\data\fyp_preprocessing\HOTOSM_BLDGS' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 116220 features and 16 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 103.6059 ymin: 1.159946 xmax: 104.0593 ymax: 1.456348
+CRS:           NA</code></pre>
 </div>
-<div class="metadata">
-<p><a href="../explore/data/167_OD_analysis/MPSZ-2019.html" class="no-external"></a></p><a href="../explore/data/167_OD_analysis/MPSZ-2019.html" class="no-external">
-<div class="listing-reading-time">
-1 min
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co">#%&gt;%</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="co">#  st_transform(crs = 3414)</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-</a>
-</div>
-</div>
-<div class="quarto-post image-right" data-index="1" data-categories="Preprocessing,Urban,HDB,Building,R" data-listing-date-sort="1722700800000" data-listing-file-modified-sort="1722785692271" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="6" data-listing-word-count-sort="1168">
-<div class="thumbnail">
-<p><a href="../explore/fyp_preprocessing.html" class="no-external"></a></p><a href="../explore/fyp_preprocessing.html" class="no-external">
-<p class="card-img-top"><img src="fyp_preprocessing_files\figure-html\unnamed-chunk-5-1.png"  class="thumbnail-image card-img"/></p>
-</a><p><a href="../explore/fyp_preprocessing.html" class="no-external"></a></p>
-</div>
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="../explore/fyp_preprocessing.html" class="no-external">Preprocessing of OSM Building Data (HDB)</a>
-</h3>
-<div class="listing-subtitle">
-<a href="../explore/fyp_preprocessing.html" class="no-external"></a>
-</div>
-<div class="listing-description">
-<a href="../explore/fyp_preprocessing.html" class="no-external">Preprocesses OSM Building Data with HDB Property Information</a>
-</div>
-</div>
-<div class="metadata">
-<a href="../explore/fyp_preprocessing.html" class="no-external">
-<div class="listing-date">
-Aug 4, 2024
-</div>
-<div class="listing-author">
-Teo Ren Jie
-</div>
-<div class="listing-reading-time">
-6 min
-</div>
-</a>
-</div>
-</div>
-<div class="quarto-post image-right" data-index="2" data-categories="167,Bus,Travel Pattern Analysis,R" data-listing-date-sort="1703260800000" data-listing-file-modified-sort="1708952041000" data-listing-date-modified-sort="1708876800000" data-listing-reading-time-sort="29" data-listing-word-count-sort="5749">
-<div class="thumbnail">
-<p><a href="../explore/167_OD_analysis.html" class="no-external"></a></p><a href="../explore/167_OD_analysis.html" class="no-external">
-<p class="card-img-top"><img src="data\167_OD_analysis\test.gif"  class="thumbnail-image card-img"/></p>
-</a><p><a href="../explore/167_OD_analysis.html" class="no-external"></a></p>
-</div>
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="../explore/167_OD_analysis.html" class="no-external">Effects of Thomson East Coast Line on Bus Service 167</a>
-</h3>
-<div class="listing-subtitle">
-<a href="../explore/167_OD_analysis.html" class="no-external"></a>
-</div>
-<div class="listing-description">
-<a href="../explore/167_OD_analysis.html" class="no-external">Analysis of Travel Patterns Using OD-Matrix provided by LTA</a>
-</div>
-</div>
-<div class="metadata">
-<a href="../explore/167_OD_analysis.html" class="no-external">
-<div class="listing-date">
-Dec 23, 2023
-</div>
-<div class="listing-author">
-Teo Ren Jie
-</div>
-<div class="listing-reading-time">
-29 min
-</div>
-</a>
-</div>
-</div>
-<div class="quarto-post image-right" data-index="3" data-categories="Sample,Python" data-listing-date-sort="1700928000000" data-listing-file-modified-sort="1700981554000" data-listing-date-modified-sort="NaN" data-listing-reading-time-sort="1" data-listing-word-count-sort="9">
-<div class="thumbnail">
-<p><a href="../explore/sample_doc.html" class="no-external"></a></p><a href="../explore/sample_doc.html" class="no-external">
-<div class="listing-item-img-placeholder card-img-top" >&nbsp;</div>
-</a><p><a href="../explore/sample_doc.html" class="no-external"></a></p>
-</div>
-<div class="body">
-<h3 class="no-anchor listing-title">
-<a href="../explore/sample_doc.html" class="no-external">Sample Python Document</a>
-</h3>
-<div class="listing-subtitle">
-<a href="../explore/sample_doc.html" class="no-external"></a>
-</div>
-<div class="listing-description">
-<a href="../explore/sample_doc.html" class="no-external">This is a document to test python</a>
-</div>
-</div>
-<div class="metadata">
-<a href="../explore/sample_doc.html" class="no-external">
-<div class="listing-date">
-Nov 26, 2023
-</div>
-<div class="listing-author">
-Teo Ren Jie
-</div>
-<div class="listing-reading-time">
-1 min
-</div>
-</a>
+<p>TO-DO: EXTRACT HOTOSM DATA BASED ON MP19 LAND USE POLYGON = RESIDENTIAL (CAN SELECT HDB ONLY?)</p>
+<p>To verify whether to use OSM or HOTOSM data for buildings</p>
+<p>Plotting HDB Existing Buildings dataset</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_options</span>(<span class="at">check.and.fix =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_mode</span>(<span class="st">"plot"</span>)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(hdb_bldgs) <span class="sc">+</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="at">col =</span> <span class="st">"brown"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="fyp_preprocessing_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
 </div>
 </div>
 </div>
-<div class="listing-no-matching d-none">
-No matching items
+<p>Adding Postal Codes to HDB Property Datasets - prepare to combine with HDB Buildings geospatial data</p>
+<p>Ref <a href="https://renjieteo-is415.netlify.app/exercises/thex03#create-a-list-storing-unique-addressespostal-codes">https://renjieteo-is415.netlify.app/exercises/thex03#create-a-list-storing-unique-addressespostal-codeshttps://renjieteo-is415.netlify.app/exercises/thex03#create-a-list-storing-unique-addressespostal-codes</a></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>HDB_PROPERTY <span class="ot">&lt;-</span> RAW_HDB_PROPERTY <span class="sc">%&gt;%</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(RAW_HDB_PROPERTY, <span class="at">address =</span> <span class="fu">paste</span>(blk_no, street))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-</div></main> <!-- /main -->
+<div class="cell">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>get_postal <span class="ot">&lt;-</span> <span class="cf">function</span>(addr_lst){</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Create a data frame to store all retrieved coordinates</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  new_postal <span class="ot">&lt;-</span> <span class="fu">data.frame</span>()</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  i <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (addr <span class="cf">in</span> addr_lst){</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    i <span class="ot">=</span> i <span class="sc">+</span> <span class="dv">1</span></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(<span class="fu">c</span>(addr, <span class="fu">as.character</span>(i)))</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>    reply <span class="ot">&lt;-</span> <span class="fu">GET</span>(<span class="st">'https://www.onemap.gov.sg/api/common/elastic/search?'</span>,</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>           <span class="at">query =</span> <span class="fu">list</span>(<span class="at">searchVal =</span> addr,</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>                        <span class="at">returnGeom =</span> <span class="st">'N'</span>,</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>                        <span class="at">getAddrDetails =</span> <span class="st">'Y'</span>))</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>    output <span class="ot">&lt;-</span> <span class="fu">fromJSON</span>(<span class="fu">rawToChar</span>(reply<span class="sc">$</span>content))</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>    found <span class="ot">&lt;-</span> output<span class="sc">$</span>found</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>    res <span class="ot">&lt;-</span> output<span class="sc">$</span>results</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Create a new data frame for each address</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>    new_row <span class="ot">&lt;-</span> <span class="fu">data.frame</span>()</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>    <span class="co"># If single result, append </span></span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (found <span class="sc">&gt;=</span> <span class="dv">1</span>){</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>      res_1 <span class="ot">&lt;-</span> <span class="fu">head</span>(res, <span class="at">n =</span> <span class="dv">1</span>)</span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>      postal <span class="ot">&lt;-</span> res_1<span class="sc">$</span>POSTAL</span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>      new_row <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">address =</span> addr, <span class="at">postal =</span> postal)</span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">else</span> {</span>
+<span id="cb11-30"><a href="#cb11-30" aria-hidden="true" tabindex="-1"></a>      new_row <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">address =</span> addr, <span class="at">postal =</span> <span class="cn">NA</span>)</span>
+<span id="cb11-31"><a href="#cb11-31" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb11-32"><a href="#cb11-32" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb11-33"><a href="#cb11-33" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Add the row</span></span>
+<span id="cb11-34"><a href="#cb11-34" aria-hidden="true" tabindex="-1"></a>    new_postal <span class="ot">&lt;-</span> <span class="fu">rbind</span>(new_postal, new_row)</span>
+<span id="cb11-35"><a href="#cb11-35" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb11-36"><a href="#cb11-36" aria-hidden="true" tabindex="-1"></a>  <span class="fu">return</span>(new_postal)</span>
+<span id="cb11-37"><a href="#cb11-37" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Obtain postal codes from OneMap API</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>addr_lst <span class="ot">&lt;-</span> <span class="fu">sort</span>(<span class="fu">unique</span>(HDB_PROPERTY<span class="sc">$</span>address))</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>postal <span class="ot">&lt;-</span> <span class="fu">get_postal</span>(addr_lst)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="fu">write_rds</span>(postal, <span class="st">"data/fyp_preprocessing/hdb_property_postal.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Combine HDB Property data to HDB Buildings dataset</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>temp_hdb <span class="ot">&lt;-</span> <span class="fu">left_join</span>(hdb_bldgs, postal, <span class="at">by=</span><span class="fu">c</span>(<span class="st">"Postal"</span> <span class="ot">=</span> <span class="st">"Postal"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
   const toggleBodyColorMode = (bsSheetEl) => {

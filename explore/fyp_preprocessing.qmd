@@ -1,0 +1,163 @@
+---
+title: "Preprocessing of OSM Building Data (HDB)"
+description: "Preprocesses OSM Building Data with HDB Property Information"
+author: "Teo Ren Jie"
+date: "08/04/2024"
+#date-modified: "2/26/2024"
+number-sections: true
+categories: ["Preprocessing", "Urban", "HDB", "Building", "R"]
+title-block-banner: true
+execute:
+  message: false
+  warning: false
+---
+
+# Overview
+
+## Background
+
+XX
+
+# Getting Started
+
+## Setting Up
+
+Packages required to be loaded for
+
+```{r}
+pacman::p_load(dplyr, readr, sf, tidyverse, tmap, sfdep, ggplot2, plotly, spdep, rjson, osmextract, geojsonR, rvest, httr, jsonlite, onemapsgapi)
+```
+
+## Data Sources
+
+| Dataset Name                                          | Source                                                                                                                                                      | Methodology |
+|---------------------|---------------------------------|------------------|
+| HDB Existing Buildings                                | [[Data.gov.sg]{.underline}](https://beta.data.gov.sg/datasets?resultId=d_16b157c52ed637edd6ba1232e026258d&agencies=Housing+and+Development+Board+%28HDB%29) | Download    |
+| HDB Property Information (4 Aug 2024)                 | [Data.gov.sg](https://beta.data.gov.sg/datasets?resultId=d_17f5382f26140b1fdae0ba2ef6239d2f&agencies=Housing+and+Development+Board+%28HDB%29)               | Download    |
+| URA Master Plan 2019 Land Use (3 Jul 2023)            | [Data.gov.sg](https://beta.data.gov.sg/datasets?query=master+plan+land+use&resultId=d_f8adc7bd980dd15861c83ff370a72eaa)                                     | Download    |
+| Humanitarian OSM Team Buildings Dataset (1 July 2024) | [HOTOSM](https://data.humdata.org/dataset/hotosm_sgp_buildings?)                                                                                            | Download    |
+
+# Data Preparation
+
+## Loading Data
+
+Loading HDB Property Information (4 Aug 2024)
+
+```{r}
+RAW_HDB_PROPERTY <- read.csv("data/fyp_preprocessing/HDBPropertyInformation.csv")
+```
+
+Loading HDB Existing Buildings KML
+
+<https://stackoverflow.com/questions/50775357/how-to-read-in-kml-file-properly-in-r-or-separate-out-lumped-variables-into-col>
+
+```{r}
+raw_hdb_bldgs = st_read("data/fyp_preprocessing/HDBExistingBuilding.geojson")
+
+attributes <- lapply(X = 1:nrow(raw_hdb_bldgs), 
+                     FUN = function(x) {
+
+                       raw_hdb_bldgs %>% 
+                         slice(x) %>%
+                         pull(Description) %>%
+                         read_html() %>%
+                         html_node("table") %>%
+                         html_table(header = TRUE, trim = TRUE, dec = ".", fill = TRUE) %>%
+                         as_tibble(.name_repair = ~ make.names(c("Attribute", "Value"))) %>% 
+                         pivot_wider(names_from = Attribute, values_from = Value)
+
+                     })
+
+hdb_bldgs <- 
+  raw_hdb_bldgs %>%
+  bind_cols(bind_rows(attributes)) %>%
+  select(-Description)
+```
+
+Loading Humanitarian OSM Buildings Dataset (1 July 2024)
+
+```{r}
+hotosm_bldgs <- st_read(dsn = "data/fyp_preprocessing/HOTOSM_BLDGS",
+                   layer = "hotosm_sgp_buildings_polygons_shp") 
+
+#%>%
+#  st_transform(crs = 3414)
+```
+
+TO-DO: EXTRACT HOTOSM DATA BASED ON MP19 LAND USE POLYGON = RESIDENTIAL (CAN SELECT HDB ONLY?)
+
+To verify whether to use OSM or HOTOSM data for buildings
+
+Plotting HDB Existing Buildings dataset
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+tmap_mode("plot")
+tm_shape(hdb_bldgs) +
+  tm_fill(col = "brown")
+
+```
+
+Adding Postal Codes to HDB Property Datasets - prepare to combine with HDB Buildings geospatial data
+
+Ref [https://renjieteo-is415.netlify.app/exercises/thex03#create-a-list-storing-unique-addressespostal-codeshttps://renjieteo-is415.netlify.app/exercises/thex03#create-a-list-storing-unique-addressespostal-codes](https://renjieteo-is415.netlify.app/exercises/thex03#create-a-list-storing-unique-addressespostal-codes)
+
+```{r}
+HDB_PROPERTY <- RAW_HDB_PROPERTY %>%
+  mutate(RAW_HDB_PROPERTY, address = paste(blk_no, street))
+```
+
+```{r}
+get_postal <- function(addr_lst){
+  
+  # Create a data frame to store all retrieved coordinates
+  new_postal <- data.frame()
+  i = 0
+  for (addr in addr_lst){
+    i = i + 1
+    print(c(addr, as.character(i)))
+
+    reply <- GET('https://www.onemap.gov.sg/api/common/elastic/search?',
+           query = list(searchVal = addr,
+                        returnGeom = 'N',
+                        getAddrDetails = 'Y'))
+    
+    output <- fromJSON(rawToChar(reply$content))
+    found <- output$found
+    res <- output$results
+    
+    # Create a new data frame for each address
+    new_row <- data.frame()
+    
+    # If single result, append 
+    if (found >= 1){
+      res_1 <- head(res, n = 1)
+      postal <- res_1$POSTAL
+      new_row <- data.frame(address = addr, postal = postal)
+    }
+
+    else {
+      new_row <- data.frame(address = addr, postal = NA)
+    }
+    
+    # Add the row
+    new_postal <- rbind(new_postal, new_row)
+  }
+  return(new_postal)
+}
+```
+
+Obtain postal codes from OneMap API
+
+```{r eval=FALSE}
+addr_lst <- sort(unique(HDB_PROPERTY$address))
+postal <- get_postal(addr_lst)
+
+write_rds(postal, "data/fyp_preprocessing/hdb_property_postal.rds")
+```
+
+Combine HDB Property data to HDB Buildings dataset
+
+```{r eval=FALSE}
+temp_hdb <- left_join(hdb_bldgs, postal, by=c("Postal" = "Postal"))
+```

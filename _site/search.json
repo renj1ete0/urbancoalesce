@@ -81,7 +81,7 @@
     "href": "explore/index.html",
     "title": "UrbanCoalesce // Explore",
     "section": "",
-    "text": "Order By\n       Default\n         \n          Title\n        \n         \n          Date - Oldest\n        \n         \n          Date - Newest\n        \n     \n  \n    \n      \n      \n    \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n0 min\n\n\n\n\n\n\n  \n\n\n\n\nEffects of Thomson East Coast Line on Bus Service 167\n\n\n\n\n\nAnalysis of Travel Patterns Using OD-Matrix provided by LTA\n\n\n\n\n\n\nDec 23, 2023\n\n\nTeo Ren Jie\n\n\n28 min\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nSample Python Document\n\n\n\n\n\nThis is a document to test python\n\n\n\n\n\n\nNov 26, 2023\n\n\nTeo Ren Jie\n\n\n0 min\n\n\n\n\n\n\nNo matching items"
+    "text": "Order By\n       Default\n         \n          Title\n        \n         \n          Date - Oldest\n        \n         \n          Date - Newest\n        \n     \n  \n    \n      \n      \n    \n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n1 min\n\n\n\n\n\n\n\n\n\n\n\n\nPreprocessing of OSM Building Data (HDB)\n\n\n\n\n\nPreprocesses OSM Building Data with HDB Property Information\n\n\n\n\n\nAug 4, 2024\n\n\nTeo Ren Jie\n\n\n6 min\n\n\n\n\n\n\n\n\n\n\n\n\nEffects of Thomson East Coast Line on Bus Service 167\n\n\n\n\n\nAnalysis of Travel Patterns Using OD-Matrix provided by LTA\n\n\n\n\n\nDec 23, 2023\n\n\nTeo Ren Jie\n\n\n29 min\n\n\n\n\n\n\n\n\n\n\n\n\nSample Python Document\n\n\n\n\n\nThis is a document to test python\n\n\n\n\n\nNov 26, 2023\n\n\nTeo Ren Jie\n\n\n1 min\n\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "explore/sample_doc.html",
@@ -110,5 +110,40 @@
     "title": "UrbanCoalesce",
     "section": "",
     "text": "UrbanCoalesce\nThis repository contains the Quarto and assets for the renjieteo.comwebsite"
+  },
+  {
+    "objectID": "explore/fyp_preprocessing.html",
+    "href": "explore/fyp_preprocessing.html",
+    "title": "Preprocessing of OSM Building Data (HDB)",
+    "section": "",
+    "text": "XX"
+  },
+  {
+    "objectID": "explore/fyp_preprocessing.html#background",
+    "href": "explore/fyp_preprocessing.html#background",
+    "title": "Preprocessing of OSM Building Data (HDB)",
+    "section": "",
+    "text": "XX"
+  },
+  {
+    "objectID": "explore/fyp_preprocessing.html#setting-up",
+    "href": "explore/fyp_preprocessing.html#setting-up",
+    "title": "Preprocessing of OSM Building Data (HDB)",
+    "section": "2.1 Setting Up",
+    "text": "2.1 Setting Up\nPackages required to be loaded for\n\npacman::p_load(dplyr, readr, sf, tidyverse, tmap, sfdep, ggplot2, plotly, spdep, rjson, osmextract, geojsonR, rvest, httr, jsonlite, onemapsgapi)"
+  },
+  {
+    "objectID": "explore/fyp_preprocessing.html#data-sources",
+    "href": "explore/fyp_preprocessing.html#data-sources",
+    "title": "Preprocessing of OSM Building Data (HDB)",
+    "section": "2.2 Data Sources",
+    "text": "2.2 Data Sources\n\n\n\nDataset Name\nSource\nMethodology\n\n\n\n\nHDB Existing Buildings\nData.gov.sg\nDownload\n\n\nHDB Property Information (4 Aug 2024)\nData.gov.sg\nDownload\n\n\nURA Master Plan 2019 Land Use (3 Jul 2023)\nData.gov.sg\nDownload\n\n\nHumanitarian OSM Team Buildings Dataset (1 July 2024)\nHOTOSM\nDownload"
+  },
+  {
+    "objectID": "explore/fyp_preprocessing.html#loading-data",
+    "href": "explore/fyp_preprocessing.html#loading-data",
+    "title": "Preprocessing of OSM Building Data (HDB)",
+    "section": "3.1 Loading Data",
+    "text": "3.1 Loading Data\nLoading HDB Property Information (4 Aug 2024)\n\nRAW_HDB_PROPERTY &lt;- read.csv(\"data/fyp_preprocessing/HDBPropertyInformation.csv\")\n\nLoading HDB Existing Buildings KML\nhttps://stackoverflow.com/questions/50775357/how-to-read-in-kml-file-properly-in-r-or-separate-out-lumped-variables-into-col\n\nraw_hdb_bldgs = st_read(\"data/fyp_preprocessing/HDBExistingBuilding.geojson\")\n\nReading layer `HDBExistingBuilding' from data source \n  `C:\\Users\\renji\\OneDrive - Singapore Management University\\0_git-projects\\urbancoalesce\\explore\\data\\fyp_preprocessing\\HDBExistingBuilding.geojson' \n  using driver `GeoJSON'\nSimple feature collection with 12847 features and 2 fields\nGeometry type: MULTIPOLYGON\nDimension:     XY, XYZ\nBounding box:  xmin: 103.6848 ymin: 1.270005 xmax: 103.989 ymax: 1.457245\nz_range:       zmin: 0 zmax: 0\nGeodetic CRS:  WGS 84\n\nattributes &lt;- lapply(X = 1:nrow(raw_hdb_bldgs), \n                     FUN = function(x) {\n\n                       raw_hdb_bldgs %&gt;% \n                         slice(x) %&gt;%\n                         pull(Description) %&gt;%\n                         read_html() %&gt;%\n                         html_node(\"table\") %&gt;%\n                         html_table(header = TRUE, trim = TRUE, dec = \".\", fill = TRUE) %&gt;%\n                         as_tibble(.name_repair = ~ make.names(c(\"Attribute\", \"Value\"))) %&gt;% \n                         pivot_wider(names_from = Attribute, values_from = Value)\n\n                     })\n\nhdb_bldgs &lt;- \n  raw_hdb_bldgs %&gt;%\n  bind_cols(bind_rows(attributes)) %&gt;%\n  select(-Description)\n\nLoading Humanitarian OSM Buildings Dataset (1 July 2024)\n\nhotosm_bldgs &lt;- st_read(dsn = \"data/fyp_preprocessing/HOTOSM_BLDGS\",\n                   layer = \"hotosm_sgp_buildings_polygons_shp\") \n\nReading layer `hotosm_sgp_buildings_polygons_shp' from data source \n  `C:\\Users\\renji\\OneDrive - Singapore Management University\\0_git-projects\\urbancoalesce\\explore\\data\\fyp_preprocessing\\HOTOSM_BLDGS' \n  using driver `ESRI Shapefile'\nSimple feature collection with 116220 features and 16 fields\nGeometry type: MULTIPOLYGON\nDimension:     XY\nBounding box:  xmin: 103.6059 ymin: 1.159946 xmax: 104.0593 ymax: 1.456348\nCRS:           NA\n\n#%&gt;%\n#  st_transform(crs = 3414)\n\nTO-DO: EXTRACT HOTOSM DATA BASED ON MP19 LAND USE POLYGON = RESIDENTIAL (CAN SELECT HDB ONLY?)\nTo verify whether to use OSM or HOTOSM data for buildings\nPlotting HDB Existing Buildings dataset\n\ntmap_options(check.and.fix = TRUE)\ntmap_mode(\"plot\")\ntm_shape(hdb_bldgs) +\n  tm_fill(col = \"brown\")\n\n\n\n\n\n\n\n\nAdding Postal Codes to HDB Property Datasets - prepare to combine with HDB Buildings geospatial data\nRef https://renjieteo-is415.netlify.app/exercises/thex03#create-a-list-storing-unique-addressespostal-codeshttps://renjieteo-is415.netlify.app/exercises/thex03#create-a-list-storing-unique-addressespostal-codes\n\nHDB_PROPERTY &lt;- RAW_HDB_PROPERTY %&gt;%\n  mutate(RAW_HDB_PROPERTY, address = paste(blk_no, street))\n\n\nget_postal &lt;- function(addr_lst){\n  \n  # Create a data frame to store all retrieved coordinates\n  new_postal &lt;- data.frame()\n  i = 0\n  for (addr in addr_lst){\n    i = i + 1\n    print(c(addr, as.character(i)))\n\n    reply &lt;- GET('https://www.onemap.gov.sg/api/common/elastic/search?',\n           query = list(searchVal = addr,\n                        returnGeom = 'N',\n                        getAddrDetails = 'Y'))\n    \n    output &lt;- fromJSON(rawToChar(reply$content))\n    found &lt;- output$found\n    res &lt;- output$results\n    \n    # Create a new data frame for each address\n    new_row &lt;- data.frame()\n    \n    # If single result, append \n    if (found &gt;= 1){\n      res_1 &lt;- head(res, n = 1)\n      postal &lt;- res_1$POSTAL\n      new_row &lt;- data.frame(address = addr, postal = postal)\n    }\n\n    else {\n      new_row &lt;- data.frame(address = addr, postal = NA)\n    }\n    \n    # Add the row\n    new_postal &lt;- rbind(new_postal, new_row)\n  }\n  return(new_postal)\n}\n\nObtain postal codes from OneMap API\n\naddr_lst &lt;- sort(unique(HDB_PROPERTY$address))\npostal &lt;- get_postal(addr_lst)\n\nwrite_rds(postal, \"data/fyp_preprocessing/hdb_property_postal.rds\")\n\nCombine HDB Property data to HDB Buildings dataset\n\ntemp_hdb &lt;- left_join(hdb_bldgs, postal, by=c(\"Postal\" = \"Postal\"))"
   }
 ]
