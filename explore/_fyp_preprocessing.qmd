@@ -1,0 +1,961 @@
+---
+title: "Preprocessing of OSM Building Data (HDB)"
+description: "Preprocesses OSM Building Data with HDB Property Information"
+author: "Teo Ren Jie"
+date: "08/04/2024"
+date-modified: "08/17/2024"
+number-sections: true
+categories: ["Preprocessing", "Urban", "HDB", "Building", "R"]
+title-block-banner: true
+execute:
+  message: false
+  warning: false
+---
+
+# Overview
+
+## Aims
+
+-   To evaluate which data source is most complete and suitable
+
+    -   OSM
+
+    -   data.gov.sg
+
+-   To prepare the data sources for machine learning
+
+    -   Combination of data sources, fields and manual intervention
+
+# Getting Started
+
+## Setting Up
+
+Packages required to be loaded for
+
+```{r}
+pacman::p_load(dplyr, readr, sf, tidyverse, tmap, sfdep, ggplot2, plotly, spdep, rjson, osmextract, geojsonR, rvest, httr, jsonlite)
+```
+
+## Data Sources
+
+| Dataset Name                                          | Source                                                                                                                                                      | Methodology |
+|-------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------|
+| HDB Existing Buildings                                | [[Data.gov.sg]{.underline}](https://beta.data.gov.sg/datasets?resultId=d_16b157c52ed637edd6ba1232e026258d&agencies=Housing+and+Development+Board+%28HDB%29) | Download    |
+| HDB Property Information (4 Aug 2024)                 | [Data.gov.sg](https://beta.data.gov.sg/datasets?resultId=d_17f5382f26140b1fdae0ba2ef6239d2f&agencies=Housing+and+Development+Board+%28HDB%29)               | Download    |
+| URA Master Plan 2019 Land Use (3 Jul 2023)            | [Data.gov.sg](https://beta.data.gov.sg/datasets?query=master+plan+land+use&resultId=d_f8adc7bd980dd15861c83ff370a72eaa)                                     | Download    |
+| Humanitarian OSM Team Buildings Dataset (1 July 2024) | [HOTOSM](https://data.humdata.org/dataset/hotosm_sgp_buildings?)                                                                                            | Download    |
+
+# Key Functions
+
+## Onemap
+
+```{r}
+get_postal <- function(addr_lst){
+  
+  # Create a data frame to store all retrieved coordinates
+  new_postal <- data.frame()
+  i = 0
+  for (addr in addr_lst){
+    i = i + 1
+    
+    if (i %% 100 == 0){
+     print(c(addr, as.character(i)))
+    }
+
+    reply <- GET('https://www.onemap.gov.sg/api/common/elastic/search?',
+           query = list(searchVal = addr,
+                        returnGeom = 'N',
+                        getAddrDetails = 'Y'))
+    
+    output <- fromJSON(rawToChar(reply$content))
+    found <- output$found
+    res <- output$results
+    
+    # Create a new data frame for each address
+    new_row <- data.frame()
+    
+    # If single result, append 
+    if (found >= 1){
+      res_1 <- head(res, n = 1)
+      postal <- res_1$POSTAL
+      new_row <- data.frame(address = addr, postal = postal)
+    }
+
+    else {
+      new_row <- data.frame(address = addr, postal = NA)
+    }
+    
+    # Add the row
+    new_postal <- rbind(new_postal, new_row)
+    remove(new_row)
+  }
+  return(new_postal)
+}
+```
+
+```{r}
+token = ""
+get_postal_rev_geocode <- function(addr_lst){
+  
+  # Create a data frame to store all retrieved coordinates
+  new_postal <- data.frame()
+  for (i in 1:nrow(addr_lst)){
+
+    if (i == 100){
+          print(c(addr_lst[i,"X"][[1]], addr_lst[i,"Y"][[1]], as.character(i)))
+    }
+    query1 <- paste(addr_lst[i,"X"][[1]], addr_lst[i,"Y"][[1]], sep = ",")
+    reply <- GET('https://www.onemap.gov.sg/api/public/revgeocodexy?',
+            query = list(location = query1,
+                        buffer = '50',
+                        addressType = 'HDB'),
+            add_headers("Content-Type"="application/json",
+            Accept="application/+json",
+            "Authorization"= paste("Bearer", token)))
+
+    
+    output <- fromJSON(rawToChar(reply$content))
+    res <- output$GeocodeInfo
+    found <- length(res)
+
+    # Create a new data frame for each address
+    new_row <- data.frame()
+    
+    # If single result, append 
+    if (found >= 1){
+      res_1 <- head(res, n = 1)
+      if ((res_1$POSTALCODE) == "NIL"){
+        postal <- NA
+      }
+      else{
+        postal <- res_1$POSTALCODE
+      }
+      new_row <- data.frame(X = addr_lst[i,"X"][[1]], Y = addr_lst[i, "Y"][[1]], postal = postal)
+    }
+
+    else {
+      new_row <- data.frame(X = addr_lst[i,"X"][[1]], Y = addr_lst[i, "Y"][[1]], postal = NA)
+    }
+    
+    # Add the row
+    new_postal <- rbind(new_postal, new_row)
+  }
+  return(new_postal)
+}
+```
+
+Adapted from https://github.com/xkjyeah/singapore-postal-codes/blob/master/download_postal_codes.py
+
+```{r}
+token = ""
+get_all_postal <- function(addr_lst){
+  
+  # Create a data frame to store all retrieved coordinates
+  new_postal <- data.frame()
+  for (i in 1:nrow(addr_lst)){
+
+    if (i == 100){
+          print(c(addr_lst[i,"X"][[1]], addr_lst[i,"Y"][[1]], as.character(i)))
+    }
+    query1 <- paste(addr_lst[i,"X"][[1]], addr_lst[i,"Y"][[1]], sep = ",")
+    reply <- GET('https://www.onemap.gov.sg/api/public/revgeocodexy?',
+            query = list(location = query1,
+                        buffer = '50',
+                        addressType = 'HDB'),
+            add_headers("Content-Type"="application/json",
+            Accept="application/+json",
+            "Authorization"= paste("Bearer", token)))
+
+    
+    output <- fromJSON(rawToChar(reply$content))
+    res <- output$GeocodeInfo
+    found <- length(res)
+
+    # Create a new data frame for each address
+    new_row <- data.frame()
+    
+    # If single result, append 
+    if (found >= 1){
+      res_1 <- head(res, n = 1)
+      if ((res_1$POSTALCODE) == "NIL"){
+        postal <- NA
+      }
+      else{
+        postal <- res_1$POSTALCODE
+      }
+      new_row <- data.frame(X = addr_lst[i,"X"][[1]], Y = addr_lst[i, "Y"][[1]], postal = postal)
+    }
+
+    else {
+      new_row <- data.frame(X = addr_lst[i,"X"][[1]], Y = addr_lst[i, "Y"][[1]], postal = NA)
+    }
+    
+    # Add the row
+    new_postal <- rbind(new_postal, new_row)
+  }
+  return(new_postal)
+}
+```
+
+# Data Preparation
+
+## Loading Data
+
+Import buildings.json (postal codes from Onemap)
+
+```{r}
+postal_codes_onemap <- fromJSON(paste(readLines("data/fyp_preprocessing/buildings.json"), collapse=""))
+```
+
+```{r eval=FALSE}
+postal_codes_onemaptemp <- postal_codes_onemap %>% distinct(POSTAL)
+
+postal_codes_onemap_filtered <- postal_codes_onemap %>%
+  group_by(POSTAL) %>%
+  slice_head(n = 1) %>%  # Keep only the first row for each POSTAL code
+  ungroup()
+
+postal_df <- postal_codes_onemaptemp %>%
+  left_join(postal_codes_onemap_filtered %>% select(POSTAL, X, Y), by = "POSTAL")
+write_rds(postal_sf, "data/fyp_preprocessing/postal_df.rds")
+```
+
+```{r}
+postal_df <- read_rds("data/fyp_preprocessing/postal_df.rds")
+postal_sf <- st_as_sf(postal_df, coords=c("X","Y"), crs=st_crs(3414)) #3414 (SVY21) as 4326 is not useful
+```
+
+```{r}
+plot(postal_sf)
+```
+
+Loading HDB Property Information (4 Aug 2024)
+
+```{r}
+RAW_HDB_PROPERTY <- read.csv("data/fyp_preprocessing/HDBPropertyInformation.csv")
+```
+
+Loading HDB Existing Buildings KML
+
+<https://stackoverflow.com/questions/50775357/how-to-read-in-kml-file-properly-in-r-or-separate-out-lumped-variables-into-col>
+
+```{r}
+raw_hdb_bldgs = st_read("data/fyp_preprocessing/HDBExistingBuilding.geojson")
+
+attributes <- lapply(X = 1:nrow(raw_hdb_bldgs), 
+                     FUN = function(x) {
+
+                       raw_hdb_bldgs %>% 
+                         slice(x) %>%
+                         pull(Description) %>%
+                         read_html() %>%
+                         html_node("table") %>%
+                         html_table(header = TRUE, trim = TRUE, dec = ".", fill = TRUE) %>%
+                         as_tibble(.name_repair = ~ make.names(c("Attribute", "Value"))) %>% 
+                         pivot_wider(names_from = Attribute, values_from = Value)
+
+                     })
+
+hdb_bldgs <- 
+  raw_hdb_bldgs %>%
+  bind_cols(bind_rows(attributes)) %>%
+  select(-Description)
+```
+
+```{r}
+st_write(hdb_bldgs, "data/fyp_preprocessing/HDBExistingBuilding_mod1.geojson")
+```
+
+```{r}
+hdb_bldgs <- st_read("data/fyp_preprocessing/hdb_bldgs_shp/hdb_shp1.shp")
+```
+
+Loading Humanitarian OSM Buildings Dataset (1 July 2024)
+
+```{r}
+osm_bldgs <- st_read("data/fyp_preprocessing/QUICKOSM_BLDGS_20240818_QGIS/osmbldgs_20240818.gpkg")
+
+osm_bldgs <- osm_bldgs %>%
+  st_transform(crs = 3414)
+```
+
+TO-DO: EXTRACT HOTOSM DATA BASED ON MP19 LAND USE POLYGON = RESIDENTIAL (CAN SELECT HDB ONLY?)
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+tmap_mode("plot")
+tm_shape(osm_bldgs) +
+  tm_fill(col = "building")
+```
+
+```{r}
+unique(osm_bldgs[['building']])
+```
+
+Key focus
+
+-   residential
+
+-   mix_used
+
+-   yes
+
+-   2?
+
+-   apartments
+
+-   house
+
+```{r eval=FALSE}
+
+temp <- osm_bldgs %>% filter(building == "yes")
+
+tmap_options(check.and.fix = TRUE)
+tmap_mode("view")
+tm_shape(temp) +
+  tm_fill(col = "building")
+```
+
+Drop mix_used
+
+```{r eval=FALSE}
+temp <- osm_bldgs %>% filter(building == "mix_used")
+
+tmap_options(check.and.fix = TRUE)
+tmap_mode("view")
+tm_shape(temp) +
+  tm_fill(col = "building")
+```
+
+```{r eval=FALSE}
+temp <- osm_bldgs %>% filter(building == "yes")
+
+tmap_options(check.and.fix = TRUE)
+tmap_mode("view")
+tm_shape(temp) +
+  tm_fill(col = "building")
+```
+
+Drop 2 - facility in boon lay
+
+```{r eval=FALSE}
+temp <- osm_bldgs %>% filter(building == "2")
+
+tmap_options(check.and.fix = TRUE)
+tmap_mode("view")
+tm_shape(temp) +
+  tm_fill(col = "building")
+```
+
+Keep - how to manage the HDB and condo and split them out?
+
+```{r eval=FALSE}
+temp <- osm_bldgs %>% filter(building == "apartments")
+
+tmap_options(check.and.fix = TRUE)
+tmap_mode("view")
+tm_shape(temp) +
+  tm_fill(col = "building")
+```
+
+```{r eval=FALSE}
+
+temp <- osm_bldgs %>% filter(building == "house")
+
+tmap_options(check.and.fix = TRUE)
+tmap_mode("view")
+tm_shape(temp) +
+  tm_fill(col = "building")
+
+```
+
+EDA Summary
+
+Retain following fields:
+
+-   residential - some overlap with condo
+
+-   yes - overlap with many other non residential
+
+-   apartments - overlap with condo
+
+```{r}
+proc_osm_bldgs <- osm_bldgs %>% filter(building %in% c("residential", "yes", "apartments"))
+proc_osm_bldgs <- proc_osm_bldgs %>% filter(is.na(addr.street) == FALSE)
+proc_osm_bldgs <- proc_osm_bldgs %>%
+  mutate(proc_osm_bldgs, address = ifelse(is.na(addr.housenumber) == FALSE, paste(addr.housenumber, addr.street),addr.street))
+```
+
+Moving forward: combine with HDB data, check and drop remainder with no match with HDB dataset
+
+```{r eval=FALSE}
+addr_lst <- sort(unique(proc_osm_bldgs$address))
+postal <- get_postal(addr_lst)
+
+write_rds(postal, "data/fyp_preprocessing/osm_bldgs_postal.rds")
+```
+
+```{r}
+OSM_BLDGS_POSTAL <- read_rds("data/fyp_preprocessing/osm_bldgs_postal.rds")
+temp_osm <- left_join(proc_osm_bldgs, OSM_BLDGS_POSTAL, by=c("address" = "address"))
+```
+
+```{r}
+temp_view <- temp_osm %>% filter(postal == "NIL")
+unique(temp_view$address)
+```
+
+```{r}
+
+temp_view <- temp_osm %>% filter(postal == "NIL")
+temp_view <- temp_view %>% filter(as.numeric(substr(address, 1, 2)) >= 0)
+unique(temp_view$address)
+```
+
+Total 77
+
+```{r}
+temp_osm[temp_osm$address == "88 Bedok North Avenue 4", "address"] = "88 BEDOK NORTH STREET 4"
+temp_osm[temp_osm$address == "201 Commonwealth Avenue West", "address"] = "201 CLEMENTI AVENUE 6"
+temp_osm[temp_osm$address == "112 Bukit Purmei Avenue", "address"] = "112 Bukit Purmei Rd"
+temp_osm[temp_osm$address == "114 Bukit Purmei Avenue", "address"] = "114 Bukit Purmei Rd"
+temp_osm[temp_osm$address == "35 Chai Chee Road", "address"] = "35 Chai Chee Ave"
+temp_osm[temp_osm$address == "40 Chai Chee Road", "address"] = "40 Chai Chee Ave"
+temp_osm[temp_osm$address == "87 Bedok North Avenue 4", "address"] = "87 Bedok North Street 4"
+temp_osm[temp_osm$address == "34 Chai Chee Road", "address"] = "34 Chai Chee Ave"
+temp_osm[temp_osm$address == "36 Chai Chee Road", "address"] = "36 Chai Chee Ave"
+temp_osm[temp_osm$address == "163 Bukit Batok West Avenue 8", "address"] = "163 Bukit Batok Street 11"
+temp_osm[temp_osm$address == "115 Bukit Purmei Avenue", "address"] = "115 Bukit Purmei Rd"
+temp_osm[temp_osm$address == "163 Bukit Batok West Avenue 8", "address"] = "163 Bukit Batok Street 11"
+temp_osm[temp_osm$address == "44A Beo Crescent", "address"] = "44A Havelock Rd"
+temp_osm[temp_osm$address == "714 Ang Mo Kio Central 1", "address"] = "714 Ang Mo Kio Avenue 6"
+temp_osm[temp_osm$address == "163 Bukit Batok West Avenue 8", "address"] = "163 Bukit Batok Street 11"
+temp_osm[temp_osm$address == "113 Bukit Purmei Avenue", "address"] = "113 Bukit Purmei Rd"
+temp_osm[temp_osm$address == "162 Bukit Batok West Avenue 8", "address"] = "162 Bukit Batok Street 11"
+temp_osm[temp_osm$address == "113 Bukit Purmei Avenue", "address"] = "113 Bukit Purmei Rd"
+temp_osm[temp_osm$address == "103 Henderson Road", "address"] = "103 Henderson Crescent"
+temp_osm[temp_osm$address == "91 Bedok North Avenue 4", "address"] = "91 Bedok North Street 4"
+temp_osm[temp_osm$address == "460B Bukit Batok West Avenue 8", "address"] = "460B Bukit Batok West Avenue 9"
+temp_osm[temp_osm$address == "90 Bedok North Avenue 4", "address"] = "90 Bedok North Street 4"
+temp_osm[temp_osm$address == "110 Bukit Purmei Avenue", "address"] = "110 Bukit Purmei Rd"
+temp_osm[temp_osm$address == "420 Bedok North Avenue 1", "address"] = "420 Bedok North Street 1"
+temp_osm[temp_osm$address == "419 Bedok North Avenue 1", "address"] = "419 Bedok North Street 1"
+temp_osm[temp_osm$address == "37 Chai Chee Road", "address"] = "37 Chai Chee Ave"
+temp_osm[temp_osm$address == "33 Chai Chee Road", "address"] = "33 Chai Chee Ave"
+temp_osm[temp_osm$address == "32 Chai Chee Road", "address"] = "32 Chai Chee Ave"
+temp_osm[temp_osm$address == "89 Bedok North Avenue 4", "address"] = "89 Bedok North Street 4"
+temp_osm[temp_osm$address == "86 Bedok North Avenue 4", "address"] = "86 Bedok North Street 4"
+temp_osm[temp_osm$address == "293D Bukit Batok East Avenue 6", "address"] = "293D Bukit Batok Street 21"
+temp_osm[temp_osm$address == "155 Bukit Batok West Avenue 8", "address"] = "155 Bukit Batok Street 11"
+temp_osm[temp_osm$address == "460A Bukit Batok West Avenue 8", "address"] = "460A Bukit Batok West Avenue 9"
+temp_osm[temp_osm$address == "463B Bukit Batok West Avenue 8", "address"] = "463B Bukit Batok West Avenue 9"
+temp_osm[temp_osm$address == "84 Bedok North Avenue 4", "address"] = "84 Bedok North Street 4"
+temp_osm[temp_osm$address == "85 Bedok North Avenue 4", "address"] = "85 Bedok North Street 4"
+temp_osm[temp_osm$address == "111 Bukit Purmei Avenue", "address"] = "111 Bukit Purmei Rd"
+temp_osm[temp_osm$address == "440C Clementi Close", "address"] = "440C Clementi Ave 3"
+temp_osm[temp_osm$address == "439 Clementi Close", "address"] = "439 Clementi Ave 3"
+temp_osm[temp_osm$address == "710A Ang Mo Kio Central 1", "address"] = "710A Ang Mo Kio Avenue 8"
+temp_osm[temp_osm$address == "192C Punggol Road", "address"] = "192C Punggol Central"
+temp_osm[temp_osm$address == "305D Punggol Road", "address"] = "305D Punggol Dr"
+temp_osm[temp_osm$address == "980 Buangkok Green", "address"] = "980 Buangkok Cres"
+```
+
+Update 42 useful ones - HDB - 2 postal below
+
+Total left = 30
+
+Rerun get address for those updated (POSTAL NIL - 42)
+
+ 
+
+```{r eval=FALSE}
+upd_proc_osm <- temp_osm %>% filter(postal == "NIL")
+addr_lst <- sort(unique(upd_proc_osm$address))
+postal <- get_postal(addr_lst)
+
+write_rds(postal, "data/fyp_preprocessing/osm_append_bldgs_postal.rds")
+```
+
+```{r}
+
+OSM_BLDGS_POSTAL <- read_rds("data/fyp_preprocessing/osm_bldgs_postal.rds")
+
+OSM_BLDGS_APPEND_POSTAL <- read_rds("data/fyp_preprocessing/osm_append_bldgs_postal.rds")
+
+OSM_COMBINE_POSTAL <- rbind(OSM_BLDGS_POSTAL, OSM_BLDGS_APPEND_POSTAL)
+temp_osm$postal <- NULL
+temp_osm <- left_join(temp_osm, OSM_COMBINE_POSTAL, by=c("address" = "address"))
+```
+
+```{r}
+temp_osm[temp_osm$address == "215 Choa Chu Kang Central", "postal"] = "680215"
+temp_osm[temp_osm$address == "216 Choa Chu Kang Central", "postal"] = "680216"
+```
+
+```{r}
+temp_view <- temp_osm %>% filter(postal == "NIL")
+temp_view <- temp_view %>% filter(as.numeric(substr(address, 1, 2)) >= 0)
+unique(temp_view$address)
+```
+
+35 remaining - correct
+
+## Preparing HDB Property Dataset
+
+HDB Property dataset lacks postal code which allows us to combine the attributes with the geospatial datasets. Onemap search API is used to search for the postal code with the dataset's address line.
+
+Adding Postal Codes to HDB Property Datasets - prepare to combine with HDB Buildings geospatial data
+
+Ref [https://renjieteo-is415.netlify.app/exercises/thex03#create-a-list-storing-unique-addressespostal-codeshttps://renjieteo-is415.netlify.app/exercises/thex03#create-a-list-storing-unique-addressespostal-codes](https://renjieteo-is415.netlify.app/exercises/thex03#create-a-list-storing-unique-addressespostal-codes)
+
+```{r}
+HDB_PROPERTY <- RAW_HDB_PROPERTY %>%
+  mutate(RAW_HDB_PROPERTY, address = paste(blk_no, street))
+```
+
+Obtain postal codes from OneMap API
+
+```{r eval=FALSE}
+addr_lst <- sort(unique(HDB_PROPERTY$address))
+postal <- get_postal(addr_lst)
+
+write_rds(postal, "data/fyp_preprocessing/hdb_property_postal.rds")
+```
+
+Combine HDB Property data to HDB Buildings dataset
+
+```{r}
+postal <- read_rds("data/fyp_preprocessing/hdb_property_postal.rds")
+temp_hdb_property <- left_join(HDB_PROPERTY, postal, by=c("address" = "address"))
+```
+
+```{r}
+temp_hdb_property <- mutate(temp_hdb_property, postal_check = 
+                     is.na(as.numeric(postal)) == FALSE)
+
+temp_hdb_property %>% filter(postal_check == FALSE)
+```
+
+```{r}
+temp_hdb_property[temp_hdb_property$address == "215 CHOA CHU KANG CTRL", "postal"] = 680215
+temp_hdb_property[temp_hdb_property$address == "216 CHOA CHU KANG CTRL", "postal"] = 680216
+
+temp_hdb_property %>% filter(postal_check == FALSE)
+```
+
+# Combination of Data
+
+## OSM
+
+```{r eval=FALSE}
+osm_property_bldgs <- left_join(temp_osm, temp_hdb_property, by=c("postal" = "postal"))
+write_rds(osm_property_bldgs, "data/fyp_preprocessing/osm_property_bldgs.rds")
+```
+
+```{r}
+osm_property_bldgs <- read_rds("data/fyp_preprocessing/osm_property_bldgs.rds")
+```
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+tmap_mode("view")
+tm_shape(osm_property_bldgs %>% filter(bldg_contract_town == "CCK")) +
+  tm_fill(col = "cyan")
+
+```
+
+## OSM 2 - merge postal with onemap postal dataset then merge with hdb
+
+```{r eval=FALSE}
+
+int <- st_intersects(osm_bldgs,postal_sf)
+
+postal_codes <- lapply(int, function(indices) {
+  if (length(indices) > 0) {
+    # Extract postal codes from intersecting features
+    return(postal_sf[indices, "POSTAL"][[1]])
+  } else {
+    return(NA)
+  }
+})
+
+comb_osm_bldgs <- osm_bldgs
+comb_osm_bldgs$POSTAL <- postal_codes
+
+comb_osm_bldgs <- comb_osm_bldgs %>% rowwise() %>%
+  mutate(POSTAL = ifelse(is.list(POSTAL), POSTAL[[1]], POSTAL))
+
+comb_osm_onemap_bldgs_property <- left_join(comb_osm_bldgs, temp_hdb_property, by=c("POSTAL" = "postal"))
+write_rds(comb_osm_onemap_bldgs_property, "data/fyp_preprocessing/osm_onemap_property_bldgs.rds")
+```
+
+```{r}
+comb_osm_onemap_bldgs_property <- read_rds("data/fyp_preprocessing/osm_onemap_property_bldgs.rds")
+```
+
+```{r}
+temp <- HDB_PROPERTY %>% rowwise() %>% mutate(found = postal %in% comb_osm_onemap_bldgs_property$POSTAL)
+comb_osm_onemap_bldgs_property
+```
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+tmap_mode("view")
+tm_shape(comb_osm_onemap_bldgs_property %>% filter(bldg_contract_town == "CCK")) +
+  tm_fill(col = "cyan")+
+tm_shape(postal_sf) +
+  tm_dots(col='red')
+
+```
+
+## Data Gov
+
+Combine the property data to hdb data
+
+```{r eval=FALSE}
+datagov_hdb_property_bldgs <- left_join(hdb_bldgs, temp_hdb_property, by=c("POSTAL_COD" = "postal"))
+write_rds(datagov_hdb_property_bldgs, "data/fyp_preprocessing/datagov_hdb_property_bldgs.rds")
+```
+
+```{r}
+datagov_hdb_property_bldgs <- read_rds("data/fyp_preprocessing/datagov_hdb_property_bldgs.rds")
+```
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+tmap_mode("view")
+tm_shape(datagov_hdb_property_bldgs) +
+  tm_fill(col = "cyan")
+
+```
+
+# Combining Datasets
+
+Based on analysis, there are pros and cons of using each dataset:
+
+-   OSM
+
+    -   Pros - more up to date building data - eg. Tengah
+
+    -   
+
+Way forward
+
+-   Use HDB datagov as base
+
+-   Combine newer buildings / non-overlapping buildings from OSM that has data
+
+Test - what is missing?
+
+```{r}
+extract_postal <- datagov_hdb_property_bldgs$POSTAL_COD
+
+missing_bldgs <- temp_hdb_property %>% filter(!(postal %in% extract_postal))
+missing_bldgs
+```
+
+```{r}
+hist((temp_hdb_property %>% filter(!(postal %in% extract_postal)))$year_completed)
+
+```
+
+```{r}
+(temp_hdb_property %>% filter(!(postal %in% extract_postal))) %>% group_by(year_completed) %>% summarise(total_count = n())
+```
+
+Look at combining OSM data for the newer data - 2023 and 2024 - missing from hdb dataset but present in property
+
+Check if in OSM
+
+```{r}
+missing_bldgs <- missing_bldgs %>% mutate(check = postal %in% osm_property_bldgs$postal)
+
+missing_bldgs %>% select(c("address", "postal", "check"))
+```
+
+# Matching with Land Use Data
+
+## Loading MP19 Dataset
+
+```{r eval=FALSE}
+raw_mp19 = st_read("data/fyp_preprocessing/MasterPlan2019LandUselayer.geojson")
+
+attributes <- lapply(X = 1:nrow(raw_mp19), 
+                     FUN = function(x) {
+
+                       raw_mp19 %>% 
+                         slice(x) %>%
+                         pull(Description) %>%
+                         read_html() %>%
+                         html_node("table") %>%
+                         html_table(header = TRUE, trim = TRUE, dec = ".", fill = TRUE) %>%
+                         as_tibble(.name_repair = ~ make.names(c("Attribute", "Value"))) %>% 
+                         pivot_wider(names_from = Attribute, values_from = Value)
+
+                     })
+
+mp19 <- 
+  raw_mp19 %>%
+  bind_cols(bind_rows(attributes)) %>%
+  select(-Description)
+
+mp19 <- mp19 %>% st_transform(crs = 3414)
+mp19 <- st_zm(mp19)
+write_rds(mp19, "data/fyp_preprocessing/mp19epsg3414.rds")
+```
+
+```{r}
+mp19 <- read_rds("data/fyp_preprocessing/mp19epsg3414.rds")
+mp19
+```
+
+```{r}
+#mp19_resi <- mp19 %>% filter(LU_DESC == "RESIDENTIAL")
+mp19_resi <- mp19
+```
+
+```{r}
+centr <- st_centroid(datagov_hdb_property_bldgs)
+```
+
+```{r}
+centr
+```
+
+```{r}
+# Perform the intersection
+mp19_intersects <- st_intersects(datagov_hdb_property_bldgs, mp19_resi)
+
+# Process the intersections
+mp19_intersects_temp <- lapply(mp19_intersects, function(indices) {
+  if (length(indices) > 0) {
+    # Extract the "Name" from the intersecting polygons
+    names_vector <- mp19_resi[indices, "Name"]$Name
+    
+    # If there's more than one name, concatenate them into a single string separated by ';'
+    if (length(names_vector) > 1) {
+      return(paste(names_vector, collapse = ";"))
+    } else {
+      # If there's only one name, return it as a character
+      return(as.character(names_vector))
+    }
+  } else {
+    return(NA)
+  }
+})
+
+# Append the result to your original data
+datagov_hdb_property_bldgs_proc <- datagov_hdb_property_bldgs
+datagov_hdb_property_bldgs_proc$mp19_poly <- unlist(mp19_intersects_temp)
+```
+
+```{r eval=FALSE}
+temp_export <- datagov_hdb_property_bldgs_proc
+temp_export <- st_collection_extract(temp_export, "POLYGON")
+temp_export$FMEL_UPD_D <- NULL
+temp_export$FMEL_UPD_D.1 <- NULL
+temp_export$INC_CRC.1 <- NULL
+temp_export$INC_CRC <- NULL
+temp_export$mp19poly <- temp_export$Name.1
+temp_export$Name.1 <- NULL
+temp_export$blk_no <- NULL
+
+st_write(temp_export, dsn = "data/fyp_preprocessing/hdbhdb/hdb_buildings20240831.shp")
+```
+
+```{r}
+# Extract and expand the values
+extrt_polygons_used <- datagov_hdb_property_bldgs_proc %>%
+  # Separate the values in mp19_poly by ';' and create a long format
+  separate_rows(mp19_poly, sep = ";") %>%
+  # Select only the mp19_poly column to focus on the names
+  select(mp19_poly) %>%
+  # Remove any NA values that might have been created
+  filter(!is.na(mp19_poly)) %>%
+  # Extract unique values
+  distinct(mp19_poly) %>%
+  # Convert the resulting column to a vector of unique names
+  pull(mp19_poly)
+
+mp19_test <- mp19 %>% rowwise() %>% mutate(YES=ifelse(Name %in% extrt_polygons_used, TRUE, FALSE))
+mp19_export <- filter(mp19_test, YES == TRUE)
+
+```
+
+```{r}
+
+```
+
+```{r eval=FALSE}
+st_write(mp19_export, dsn = "data/fyp_preprocessing/mp19/mp19resi20240831.shp")
+```
+
+```{r}
+
+datagov_bef1990 <- datagov_hdb_property_bldgs_proc %>% filter(year_completed <= 1990 | is.na(year_completed) == TRUE)
+
+datagov_post1990 <- datagov_hdb_property_bldgs_proc %>% filter(year_completed > 1990, is.na(year_completed) == FALSE)
+
+# Step 1: Expand the `mp19_poly` column in both data_gov_bef1990 and data_gov_post1990
+datagov_bef1990_expanded <- datagov_bef1990 %>%
+  separate_rows(mp19_poly, sep = ";")
+
+datagov_post1990_expanded <- datagov_post1990 %>%
+  separate_rows(mp19_poly, sep = ";")
+
+# Step 2: Identify the rows in data_gov_post1990 that should be removed
+buildings_to_remove <- datagov_post1990_expanded %>%
+  # Check if mp19_poly values in data_gov_post1990 match any in data_gov_bef1990
+  filter(mp19_poly %in% datagov_bef1990_expanded$mp19_poly)
+
+# Step 3: Filter out the corresponding buildings from data_gov_post1990
+datagov_post1990_filtered <- datagov_post1990_expanded %>%
+  filter(!mp19_poly %in% buildings_to_remove$mp19_poly)
+
+# If you need to re-collapse the `mp19_poly` column back to the original format
+datagov_post1990_filtered <- datagov_post1990_filtered %>%
+  group_by(across(-mp19_poly)) %>%
+  summarise(mp19_poly = paste(unique(mp19_poly), collapse = ";"), .groups = "drop")
+
+# Extract and expand the values
+extrt_polygons_used <- datagov_post1990_filtered %>%
+  # Separate the values in mp19_poly by ';' and create a long format
+  separate_rows(mp19_poly, sep = ";") %>%
+  # Select only the mp19_poly column to focus on the names
+  select(mp19_poly) %>%
+  # Remove any NA values that might have been created
+  filter(!is.na(mp19_poly)) %>%
+  # Extract unique values
+  distinct(mp19_poly) %>%
+  # Convert the resulting column to a vector of unique names
+  pull(mp19_poly)
+
+# Step 2: Expand datagov_post1990_filtered by separating multiple polygons
+datagov_post1990_filtered <- datagov_post1990_filtered %>%
+  separate_rows(mp19_poly, sep = ";")
+
+# Step 2: Group by mp19_poly to check residential status of buildings within the same polygon
+datagov_post1990_filtered <- datagov_post1990_filtered %>%
+  group_by(mp19_poly) %>%
+  # Check if all buildings in the polygon are non-residential
+  mutate(all_non_residential = all(residential == "N")) %>%
+  # Create the 'remove' column: mark TRUE if all buildings in the polygon are non-residential
+  mutate(remove = ifelse(all_non_residential, TRUE, FALSE)) %>%
+  ungroup()
+
+mp19_test <- mp19 %>% rowwise() %>% mutate(YES=ifelse(Name %in% extrt_polygons_used, TRUE, FALSE))
+mp19_test <- mp19_test %>%
+  mutate(remove2 = ifelse(Name %in% datagov_post1990_filtered$mp19_poly[datagov_post1990_filtered$remove == TRUE], TRUE, FALSE))
+
+# Step 1: Filter mp19_test based on LU_DESC values
+mp19_test_filtered <- mp19_test %>%
+  filter(!LU_DESC %in% c("OPEN SPACE", "COMMERCIAL", "RESERVE SITE"))
+
+# Step 3: Filter datagov_post1990_filtered_expanded to retain rows with mp19_poly present in mp19_test_filtered$Name
+datagov_post1990_filtered <- datagov_post1990_filtered %>%
+  filter(mp19_poly %in% mp19_test_filtered$Name)
+
+datagov_post1990_filtered <- filter(datagov_post1990_filtered, remove==FALSE)
+datagov_post1990_filtered$has_residential <- NULL
+datagov_post1990_filtered$remove <- NULL
+
+# Step 2: Identify plots where no building has `multistorey_carpark = Y`
+plots_without_carpark <- datagov_post1990_filtered %>%
+  group_by(mp19_poly) %>%
+  # Check if any building in the polygon has multistorey_carpark = "Y"
+  summarize(has_carpark = any(multistorey_carpark == "Y"), .groups = "drop") %>%
+  # Filter for plots without carpark
+  filter(!has_carpark) %>%
+  pull(mp19_poly)
+
+# Step 3: Mark `remove = TRUE` in `mp19_test` for corresponding plots
+mp19_test_filtered <- mp19_test_filtered %>%
+  mutate(remove = ifelse(Name %in% plots_without_carpark, TRUE, FALSE))
+
+# Step 4: Mark `remove = TRUE` in `datagov_post1990_filtered` where mp19_poly matches plots without a carpark
+datagov_post1990_filtered <- datagov_post1990_filtered %>%
+  mutate(remove = ifelse(mp19_poly %in% plots_without_carpark, TRUE, FALSE))
+
+# (Optional) Step 4: Collapse the rows back to the original structure (if necessary)
+datagov_post1990_filtered <- datagov_post1990_filtered %>%
+  group_by(across(-mp19_poly)) %>%
+  summarize(mp19_poly = paste(mp19_poly, collapse = ";"), .groups = "drop")
+
+
+mp19_post1990_export <- filter(mp19_test_filtered, YES == TRUE)
+mp19_post1990_export <- filter(mp19_post1990_export, remove == FALSE)
+mp19_post1990_export <- filter(mp19_post1990_export, remove2 == FALSE)
+datagov_post1990_filtered <- filter(datagov_post1990_filtered, remove==FALSE)
+
+
+temp_export <- datagov_post1990_filtered
+temp_export <- st_collection_extract(temp_export, "POLYGON")
+temp_export$FMEL_UPD_D <- NULL
+temp_export$FMEL_UPD_D.1 <- NULL
+temp_export$INC_CRC.1 <- NULL
+temp_export$INC_CRC <- NULL
+temp_export$mp19poly <- temp_export$Name.1
+temp_export$Name.1 <- NULL
+temp_export$blk_no <- NULL
+temp_export$postal_check <- NULL
+temp_export$remove <- NULL
+
+mp19_post1990_export$YES <- NULL
+mp19_post1990_export$INC_CRC <- NULL
+mp19_post1990_export$FMEL_UPD_D <- NULL
+mp19_post1990_export$remove <- NULL
+mp19_post1990_export$remove2 <- NULL
+
+mp19_post1990_export$LA <- st_area(mp19_post1990_export)
+mp19_post1990_export <- mutate(mp19_post1990_export, CGFA = ifelse(!is.na(as.numeric(GPR)),LA * as.numeric(GPR), LA))
+
+temp_export$BA <- st_area(temp_export)
+temp_export <- mutate(temp_export, CGFA = ifelse(!is.na(as.numeric(max_floor_lvl)),BA * as.numeric(max_floor_lvl), BA))
+
+st_write(temp_export, dsn = "data/fyp_preprocessing/hdbhdb/hdb_buildings20240909_aft1990.shp")
+st_write(mp19_post1990_export, dsn = "data/fyp_preprocessing/mp19/mp19resi202400909_aft1990.shp")
+
+
+
+
+```
+
+```{r}
+missing_bldgs <- (missing_bldgs %>% filter(year_completed>1990))
+missing_bldgs_postal <- missing_bldgs$postal
+
+length(missing_bldgs_postal)
+```
+
+```{r}
+test_missing <- comb_osm_onemap_bldgs_property %>% filter(POSTAL %in% missing_bldgs_postal)
+check_missing <- missing_bldgs
+check_missing$check <- missing_bldgs_postal %in% test_missing$POSTAL
+check_missing %>% filter(check==FALSE)
+
+```
+
+882665434 osmid \> 692127
+
+732007397 osmid \> 523953 732007396 osmid \> 523954 726150218 osmid \> 760384
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+tmap_mode("view")
+tm_shape(test_missing) +
+  tm_fill(col = "cyan")
+
+
+```
+
+```{r}
+mp19_post1990_export <- st_read(dsn = "data/fyp_preprocessing/mp19/mp19resi202400909_aft1990.shp")
+
+mp19_others <- mp19 %>% filter(LU_DESC == "RESIDENTIAL", GPR != "LND") %>% filter(GPR != "NA") %>% filter(GPR != "EVA") %>% filter(GPR != "SDP") %>% filter(GPR != "")
+mp19_others <- mp19_others %>% filter(!Name %in% mp19_post1990_export$Name)
+mp19_others$LA <- st_area(mp19_others)
+mp19_others <- mutate(mp19_others, CGFA = ifelse(!is.na(as.numeric(GPR)),LA * as.numeric(GPR), LA))
+st_write(mp19_others, dsn = "data/fyp_preprocessing/mp19/mp19resi202400911_others-test.shp")
+```
+
+PARK COMMERCIAL OPEN SPA
