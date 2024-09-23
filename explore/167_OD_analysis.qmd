@@ -68,30 +68,33 @@ Loading the Origin-Destination Passenger Count for Buses
 
 ```{r}
 RAW_OD_2019_11 <- read.csv("data/167_OD_analysis/origin_destination_bus_201911.csv")
-RAW_OD_2021_07 <- read.csv("data/167_OD_analysis/origin_destination_bus_202211.csv")
-RAW_OD_2022_08 <- read.csv("data/167_OD_analysis/origin_destination_bus_202211.csv")
 RAW_OD_2022_11 <- read.csv("data/167_OD_analysis/origin_destination_bus_202211.csv")
-RAW_OD_2023_11 <- read.csv("data/167_OD_analysis/origin_destination_bus_202311.csv")
+RAW_OD_2024_04 <- read.csv("data/167_OD_analysis/origin_destination_bus_202404.csv")
+
 ```
 
 Loading the Bus Routes JSON file:
 
 ```{r}
-BUS_ROUTE <- fromJSON(file="data/167_OD_analysis/busroute_2023-11-26.json")
+BUS_ROUTE_2024_04 <- fromJSON(file="data/167_OD_analysis/busroute_2024-04-30.json")
+BUS_ROUTE_2022_10 <- fromJSON(file="data/167_OD_analysis/busroute_2022-10.json")
 BUS_ROUTE_2021_07 <- fromJSON(file="data/167_OD_analysis/busroute_2021-07.json")
+
 ```
 
 Loading the Bus Stops JSON file:
 
 ```{r}
 BUS_STOP <- fromJSON(file="data/167_OD_analysis/busstop_2023-11-26.json")
+BUS_STOP_2024_04 <-  fromJSON(file="data/167_OD_analysis/busstop_2024-04-30.json")
 ```
 
 Loading the Bus Service JSON file:
 
 ```{r}
-BUS_SERVICE <- fromJSON(file="data/167_OD_analysis/busservice_2023-11-26.json")
+BUS_SERVICE_2024_04 <- fromJSON(file="data/167_OD_analysis/busservice_2024-04-30.json")
 BUS_SERVICE_2021_07 <- fromJSON(file="data/167_OD_analysis/busservice_2021-07.json")
+BUS_SERVICE_2022_10 <- fromJSON(file="data/167_OD_analysis/busservice_2022-10.json")
 ```
 
 Load MPSZ (2019):
@@ -115,7 +118,7 @@ WEEKDAY_OF_MONTH = 21
 SUN_PH_OF_MONTH = 5
 SAT_OF_MONTH = 4
 WEEKEND_OF_MONTH = SUN_PH_OF_MONTH + SAT_OF_MONTH
-OD_2023_11 <- RAW_OD_2023_11 %>% mutate(TOTAL_TRIPS = ifelse(DAY_TYPE=="WEEKENDS/HOLIDAY", TOTAL_TRIPS / WEEKEND_OF_MONTH, TOTAL_TRIPS / WEEKDAY_OF_MONTH ))
+OD_2024_04 <- RAW_OD_2024_04 %>% mutate(TOTAL_TRIPS = ifelse(DAY_TYPE=="WEEKENDS/HOLIDAY", TOTAL_TRIPS / WEEKEND_OF_MONTH, TOTAL_TRIPS / WEEKDAY_OF_MONTH ))
 ```
 
 ```{r}
@@ -124,22 +127,6 @@ SUN_PH_OF_MONTH = 4
 SAT_OF_MONTH = 4
 WEEKEND_OF_MONTH = SUN_PH_OF_MONTH + SAT_OF_MONTH
 OD_2022_11 <- RAW_OD_2022_11 %>% mutate(TOTAL_TRIPS = ifelse(DAY_TYPE=="WEEKENDS/HOLIDAY", TOTAL_TRIPS / WEEKEND_OF_MONTH, TOTAL_TRIPS / WEEKDAY_OF_MONTH ))
-```
-
-```{r}
-WEEKDAY_OF_MONTH = 21
-SUN_PH_OF_MONTH = 5
-SAT_OF_MONTH = 5
-WEEKEND_OF_MONTH = SUN_PH_OF_MONTH + SAT_OF_MONTH
-OD_2021_07 <- RAW_OD_2021_07 %>% mutate(TOTAL_TRIPS = ifelse(DAY_TYPE=="WEEKENDS/HOLIDAY", TOTAL_TRIPS / WEEKEND_OF_MONTH, TOTAL_TRIPS / WEEKDAY_OF_MONTH ))
-```
-
-```{r}
-WEEKDAY_OF_MONTH = 22
-SUN_PH_OF_MONTH = 4
-SAT_OF_MONTH = 4
-WEEKEND_OF_MONTH = SUN_PH_OF_MONTH + SAT_OF_MONTH
-OD_2022_08 <- RAW_OD_2022_08 %>% mutate(TOTAL_TRIPS = ifelse(DAY_TYPE=="WEEKENDS/HOLIDAY", TOTAL_TRIPS / WEEKEND_OF_MONTH, TOTAL_TRIPS / WEEKDAY_OF_MONTH ))
 ```
 
 ```{r}
@@ -167,7 +154,7 @@ As LTA's OD Count stores CBD area bus stops starting with 0 as 4 digit codes ins
 BS_167_DIR_1_DF <- data.frame(Seq =  integer(), BS_Code = integer())
 BS_167_DIR_2_DF <- data.frame(Seq =  integer(), BS_Code = integer())
 
-for (route_info in BUS_ROUTE){
+for (route_info in BUS_ROUTE_2022_10){
   if (route_info$ServiceNo == "167"){
     if (route_info$Direction == 1){
       BS_167_DIR_1_temp <- data.frame(Seq = as.numeric(route_info$StopSequence), BS_Code = as.numeric(route_info$BusStopCode))
@@ -189,12 +176,19 @@ rm(BS_167_DIR_2_temp)
 We convert the List format of Bus Stops to a more workable DataFrame format
 
 ```{r}
-BUS_STOP_DF <- data.frame(BS_Code = integer(), BS_Road_Name = character(), BS_Name = character(), Latitude = double(), Longitude = double())
-for (bs in BUS_STOP){
-  BS_TEMP <- data.frame(BS_Code = as.numeric(bs$BusStopCode), BS_Road_Name = bs$RoadName, BS_Name = bs$Description, Latitude = as.numeric(bs$Latitude), Longitude = as.numeric(bs$Longitude))
-  BUS_STOP_DF[nrow(BUS_STOP_DF) +1,] <- BS_TEMP  
+
+PROCESS_BUS_STOP <- function(BS){
+  BUS_STOP_DF <- data.frame(BS_Code = integer(), BS_Road_Name = character(), BS_Name = character(), Latitude = double(), Longitude = double())
+  for (bs in BS){
+    BS_TEMP <- data.frame(BS_Code = as.numeric(bs$BusStopCode), BS_Road_Name = bs$RoadName, BS_Name = bs$Description, Latitude = as.numeric(bs$Latitude), Longitude = as.numeric(bs$Longitude))
+    BUS_STOP_DF[nrow(BUS_STOP_DF) +1,] <- BS_TEMP  
+  }
+  return(BUS_STOP_DF)
 }
-rm(BS_TEMP)
+
+BUS_STOP_DF <- PROCESS_BUS_STOP(BUS_STOP)
+
+rm(BUS_STOP)
 ```
 
 We then do a left join, merging the bus stop info into Bus Service direction DataFrames
@@ -215,91 +209,75 @@ rownames(BS_167_DIR_2_DF) <- BS_167_DIR_2_DF$Seq
 
 ### Extract OD Passenger Count Related to 167
 
-Extracting the Direction 1 OD Data
-
-202206
+Function to Extract OD Data for each Direction
 
 ```{r}
-OD_2019_11_DIR1 <- OD_2019_11 %>% filter(OD_2019_11$ORIGIN_PT_CODE %in% BS_167_DIR_1_DF$BS_Code & OD_2019_11$DESTINATION_PT_CODE %in% BS_167_DIR_1_DF$BS_Code)
+PROCESS_OD_BY_DIR <- function(OD, BS_DIR){
+  OD_DIR <- OD %>% filter(OD$ORIGIN_PT_CODE %in% BS_DIR$BS_Code & OD$DESTINATION_PT_CODE %in% BS_DIR$BS_Code)
+  OD_DIR <- left_join(OD_DIR, BS_DIR[1:2], by=c("ORIGIN_PT_CODE" = "BS_Code")) %>% rename(OriginSeq = Seq)
+  OD_DIR <- left_join(OD_DIR, BS_DIR[1:2], by=c("DESTINATION_PT_CODE" = "BS_Code")) %>% rename(DestSeq = Seq)
+  OD_DIR <- OD_DIR %>% filter(OriginSeq < DestSeq)
+  OD_DIR <- OD_DIR[1:7]
 
-OD_2019_11_DIR1 <- left_join(OD_2019_11_DIR1, BS_167_DIR_1_DF[1:2], by=c("ORIGIN_PT_CODE" = "BS_Code")) %>% rename(OriginSeq = Seq)
-OD_2019_11_DIR1 <- left_join(OD_2019_11_DIR1, BS_167_DIR_1_DF[1:2], by=c("DESTINATION_PT_CODE" = "BS_Code")) %>% rename(DestSeq = Seq)
-OD_2019_11_DIR1 <- OD_2019_11_DIR1 %>% filter(OriginSeq < DestSeq)
-OD_2019_11_DIR1 <- OD_2019_11_DIR1[1:7]
+  return(OD_DIR)
+}
 ```
 
-2023
+
+
+Extract OD for the various datasets
 
 ```{r}
-OD_2023_11_DIR1 <- OD_2023_11 %>% filter(OD_2023_11$ORIGIN_PT_CODE %in% BS_167_DIR_1_DF$BS_Code & OD_2023_11$DESTINATION_PT_CODE %in% BS_167_DIR_1_DF$BS_Code)
 
-OD_2023_11_DIR1 <- left_join(OD_2023_11_DIR1, BS_167_DIR_1_DF[1:2], by=c("ORIGIN_PT_CODE" = "BS_Code")) %>% rename(OriginSeq = Seq)
-OD_2023_11_DIR1 <- left_join(OD_2023_11_DIR1, BS_167_DIR_1_DF[1:2], by=c("DESTINATION_PT_CODE" = "BS_Code")) %>% rename(DestSeq = Seq)
-OD_2023_11_DIR1 <- OD_2023_11_DIR1 %>% filter(OriginSeq < DestSeq)
-OD_2023_11_DIR1 <- OD_2023_11_DIR1[1:7]
+OD_2019_11_DIR1 <- PROCESS_OD_BY_DIR(OD_2019_11, BS_167_DIR_1_DF)
+OD_2022_11_DIR1 <- PROCESS_OD_BY_DIR(OD_2022_11, BS_167_DIR_1_DF)
+OD_2024_04_DIR1 <- PROCESS_OD_BY_DIR(OD_2024_04, BS_167_DIR_1_DF)
+OD_2019_11_DIR2 <- PROCESS_OD_BY_DIR(OD_2019_11, BS_167_DIR_2_DF)
+OD_2022_11_DIR2 <- PROCESS_OD_BY_DIR(OD_2022_11, BS_167_DIR_2_DF)
+OD_2024_04_DIR2 <- PROCESS_OD_BY_DIR(OD_2024_04, BS_167_DIR_2_DF)
+
 ```
 
-Just to check if the number of bus stops extracted matches the number of stops we have
-
-```{r}
-num_stops_OD_1 <- n_distinct(OD_2023_11_DIR1$ORIGIN_PT_CODE)
-num_stops_OD_1
-nrow(BS_167_DIR_1_DF)
-num_stops_OD_1 == nrow(BS_167_DIR_1_DF)
-
-num_stops_OD_1 <- n_distinct(OD_2023_11_DIR1$ORIGIN_PT_CODE)
-num_stops_OD_1
-num_stops_OD_1 == nrow(BS_167_DIR_1_DF)
-```
-
-Extracting the Direction 2 OD Data
-
-```{r}
-OD_2023_11_DIR2 <- OD_2023_11 %>% filter(OD_2023_11$ORIGIN_PT_CODE %in% BS_167_DIR_2_DF$BS_Code & OD_2023_11$DESTINATION_PT_CODE %in% BS_167_DIR_2_DF$BS_Code)
-
-OD_2023_11_DIR2 <- left_join(OD_2023_11_DIR2, BS_167_DIR_2_DF[1:2], by=c("ORIGIN_PT_CODE" = "BS_Code")) %>% rename(OriginSeq = Seq)
-OD_2023_11_DIR2 <- left_join(OD_2023_11_DIR2, BS_167_DIR_2_DF[1:2], by=c("DESTINATION_PT_CODE" = "BS_Code")) %>% rename(DestSeq = Seq)
-OD_2023_11_DIR2 <- OD_2023_11_DIR2 %>% filter(OriginSeq < DestSeq)
-OD_2023_11_DIR2 <- OD_2023_11_DIR2[1:7]
-```
-
-Just to check if the number of bus stops extracted matches the number of stops we have
-
-```{r}
-num_stops_OD_2 <- n_distinct(OD_2023_11_DIR2$ORIGIN_PT_CODE)
-num_stops_OD_2
-num_stops_OD_2 == nrow(BS_167_DIR_2_DF)
-```
 
 ### Extract Bus Route Info to DataFrame
 
 We save information that is required for our analysis from JSON to DataFrame format
 
-```{r warning=FALSE}
-BUS_ROUTE_DF <- data.frame(Service_No = character(), Direction = integer(), Seq = integer(), BS_Code = integer(), Distance = double(), WD_FirstBus = integer(), WD_LastBus = integer(), SAT_FirstBus = integer(), SAT_LastBus = integer(), SUN_FirstBus = integer(), SUN_LastBus = integer())
-for (route in BUS_ROUTE){
-  BS_RT_TEMP <- data.frame(ServiceNo = route$ServiceNo, Direction = as.numeric(route$Direction), Seq = as.numeric(route$StopSequence), BS_Code = as.numeric(route$BusStopCode), Distance = as.numeric(route$Distance), WD_FirstBus = as.numeric(route$WD_FirstBus), WD_LastBus = as.numeric(route$WD_LastBus), SAT_FirstBus = as.numeric(route$SAT_FirstBus), SAT_LastBus = as.numeric(route$SAT_LastBus), SUN_FirstBus = as.numeric(route$SUN_FirstBus), SUN_LastBus = as.numeric(route$SUN_LastBus))
-  BUS_ROUTE_DF[nrow(BUS_ROUTE_DF) +1,] <- BS_RT_TEMP  
+Create the function to extract the information
+
+```{r}
+PROCESS_BUS_ROUTE_INFO <- function(BUS_RT){
+  BUS_ROUTE_DF <- data.frame(Service_No = character(), Direction = integer(), Seq = integer(), BS_Code = integer(), Distance = double(), WD_FirstBus = integer(), WD_LastBus = integer(), SAT_FirstBus = integer(), SAT_LastBus = integer(), SUN_FirstBus = integer(), SUN_LastBus = integer())
+  for (route in BUS_RT){
+    BS_RT_TEMP <- data.frame(ServiceNo = route$ServiceNo, Direction = as.numeric(route$Direction), Seq = as.numeric(route$StopSequence), BS_Code = as.numeric(route$BusStopCode), Distance = as.numeric(route$Distance), WD_FirstBus = as.numeric(route$WD_FirstBus), WD_LastBus = as.numeric(route$WD_LastBus), SAT_FirstBus = as.numeric(route$SAT_FirstBus), SAT_LastBus = as.numeric(route$SAT_LastBus), SUN_FirstBus = as.numeric(route$SUN_FirstBus), SUN_LastBus = as.numeric(route$SUN_LastBus))
+    BUS_ROUTE_DF[nrow(BUS_ROUTE_DF) +1,] <- BS_RT_TEMP  
 }
-rm(BS_RT_TEMP)
+  return (BUS_ROUTE_DF)
+}
 ```
 
 ```{r warning=FALSE}
-BUS_ROUTE_2021_07_DF <- data.frame(Service_No = character(), Direction = integer(), Seq = integer(), BS_Code = integer(), Distance = double(), WD_FirstBus = integer(), WD_LastBus = integer(), SAT_FirstBus = integer(), SAT_LastBus = integer(), SUN_FirstBus = integer(), SUN_LastBus = integer())
-for (route in BUS_ROUTE_2021_07){
+BUS_ROUTE_2021_07_DF <- PROCESS_BUS_ROUTE_INFO(BUS_ROUTE_2021_07)
+BUS_ROUTE_2022_10_DF <- PROCESS_BUS_ROUTE_INFO(BUS_ROUTE_2022_10)
+BUS_ROUTE_2024_04_DF <- PROCESS_BUS_ROUTE_INFO(BUS_ROUTE_2024_04)
 
-  BS_RT_TEMP <- data.frame(ServiceNo = route$ServiceNo, Direction = as.numeric(route$Direction), Seq = as.numeric(route$StopSequence), BS_Code = as.numeric(route$BusStopCode), Distance = as.numeric(route$Distance), WD_FirstBus = as.numeric(route$WD_FirstBus), WD_LastBus = as.numeric(route$WD_LastBus), SAT_FirstBus = as.numeric(route$SAT_FirstBus), SAT_LastBus = as.numeric(route$SAT_LastBus), SUN_FirstBus = as.numeric(route$SUN_FirstBus), SUN_LastBus = as.numeric(route$SUN_LastBus))
-  BUS_ROUTE_2021_07_DF[nrow(BUS_ROUTE_2021_07_DF) +1,] <- BS_RT_TEMP  
-}
-
-BUS_ROUTE_2021_07_DF <- unique(BUS_ROUTE_2021_07_DF)
-rm(BS_RT_TEMP)
+rm(BUS_ROUTE_2021_07)
+rm(BUS_ROUTE_2022_10)
+rm(BUS_ROUTE_2024_04)
 ```
+
+
+Remove duplicates from bus route
+
+```{r}
+BUS_ROUTE_2022_10_DF <- distinct(BUS_ROUTE_2022_10_DF)
+BUS_ROUTE_2021_07_DF <- distinct(BUS_ROUTE_2021_07_DF)
+```
+
 
 ### Extract Bus Service Info to DataFrame
 
 ```{r}
-
 PROCESS_BUS_SVC_DF <- function(BUS_SERVICE){
     BUS_SVC_DF <- data.frame(Service_No = character(), Direction = integer(), Category = character(), AM_Peak_Freq = character(), AM_OffPeak_Freq = character(), PM_Peak_Freq = character(), PM_OffPeak_Freq = character(), LoopDesc = character())
   for (svc in BUS_SERVICE){
@@ -314,32 +292,29 @@ PROCESS_BUS_SVC_DF <- function(BUS_SERVICE){
     return (BUS_SVC_DF)
 }
 
-
-BUS_SVC_DF <- PROCESS_BUS_SVC_DF(BUS_SERVICE)
 BUS_SVC_2021_07_DF <- PROCESS_BUS_SVC_DF(BUS_SERVICE_2021_07)
+BUS_SVC_2022_10_DF <- PROCESS_BUS_SVC_DF(BUS_SERVICE_2022_10)
+BUS_SVC_2024_04_DF <- PROCESS_BUS_SVC_DF(BUS_SERVICE_2024_04)
+
+rm(BUS_SERVICE_2021_07)
+rm(BUS_SERVICE_2022_10)
+rm(BUS_SERVICE_2024_04)
 ```
 
 ### Discard Unneeded Variables
 
 ```{r}
-rm(BUS_ROUTE)
-rm(BUS_SERVICE)
-rm(BUS_SERVICE_2021_07)
-rm(route)
-rm(svc)
 rm(bs)
+rm(route)
 rm(route_info)
-rm(RAW_OD_2021_07)
-rm(RAW_OD_2022_08)
-rm(RAW_OD_2022_11)
-rm(RAW_OD_2023_11)
 rm(RAW_OD_2019_11)
-rm(BUS_ROUTE_2021_07)
+rm(RAW_OD_2022_11)
+rm(RAW_OD_2024_04)
 ```
 
 # Exploratory Data Analysis
 
-Investigating the Bus Stops on Bus Service 167
+Bus Service 167 is a bi-directional service betwen Sembawang and Bukit Merah. Here, we view the bus stops that 167 serves in both directions.
 
 ::: panel-tabset
 ## Dir 1 (Sembawang to Bt Merah)
@@ -360,11 +335,9 @@ BS_167_DIR_2_DF[order(BS_167_DIR_2_DF$Seq),]
 :::
 
 ```{r}
-sf_BS_167_DIR_1 <- st_as_sf(BS_167_DIR_1_DF, coords = c("Longitude", "Latitude"), crs = 4326)
-sf_BS_167_DIR_2 <- st_as_sf(BS_167_DIR_2_DF, coords = c("Longitude", "Latitude"), crs = 4326)
+sf_BS_167_DIR_1 <- st_as_sf(BS_167_DIR_1_DF, coords = c("Longitude", "Latitude"), crs = 4326) %>% st_transform(sf_BS_167_DIR_1, crs = 3414)
+sf_BS_167_DIR_2 <- st_as_sf(BS_167_DIR_2_DF, coords = c("Longitude", "Latitude"), crs = 4326) %>% st_transform(sf_BS_167_DIR_1, crs = 3414)
 
-sf_BS_167_DIR_1 <- st_transform(sf_BS_167_DIR_1, crs = 3414)
-sf_BS_167_DIR_2 <- st_transform(sf_BS_167_DIR_2, crs = 3414)
 ```
 
 ```{r}
@@ -409,9 +382,10 @@ For OD Count Data on Weekday, divide total trip value by 21 (21 weekdays excl PH
 
 ## 6am
 
+
 ```{r}
 
-temp_sf <- gen_od_timing(OD_2023_11_DIR1, sf_BS_167_DIR_1, 6)
+temp_sf <- gen_od_timing(OD_2024_04_DIR1, sf_BS_167_DIR_1, 6)
 
 tmap_plot_route(sf_BS_167_DIR_1, temp_sf)
 temp_sf %>% arrange(desc(TOTAL_TRIPS))
@@ -422,7 +396,7 @@ plot_trip_summary(temp_sf)
 ## 7am
 
 ```{r}
-temp_sf <- gen_od_timing(OD_2023_11_DIR1, sf_BS_167_DIR_1, 7)
+temp_sf <- gen_od_timing(OD_2024_04_DIR1, sf_BS_167_DIR_1, 7)
 
 tmap_plot_route(sf_BS_167_DIR_1, temp_sf)
 
@@ -432,7 +406,7 @@ plot_trip_summary(temp_sf)
 ## 8am
 
 ```{r}
-temp_sf <- gen_od_timing(OD_2023_11_DIR1, sf_BS_167_DIR_1, 8)
+temp_sf <- gen_od_timing(OD_2024_04_DIR1, sf_BS_167_DIR_1, 8)
 
 tmap_plot_route(sf_BS_167_DIR_1, temp_sf)
 
@@ -442,7 +416,7 @@ plot_trip_summary(temp_sf)
 ## 9am
 
 ```{r}
-temp_sf <- gen_od_timing(OD_2023_11_DIR1, sf_BS_167_DIR_1, 9)
+temp_sf <- gen_od_timing(OD_2024_04_DIR1, sf_BS_167_DIR_1, 9)
 
 tmap_plot_route(sf_BS_167_DIR_1, temp_sf)
 
@@ -458,7 +432,7 @@ Animation of 24hrs
 i_time = 5
 tm_objs = list()
 while (i_time < 24){
-  temp_sf <- gen_od_timing(OD_2023_11_DIR1, sf_BS_167_DIR_1, i_time)
+  temp_sf <- gen_od_timing(OD_2024_04_DIR1, sf_BS_167_DIR_1, i_time)
   result = paste("Bus Service 167 Weekday: Hour ", i_time, sep = " ")
   temp_tm <- 
   #tm_shape(sf_BS_167_DIR_2) +
@@ -557,76 +531,6 @@ Additionally, we will derive the frequencies as follows:
 
     -   From start of service to 0630h - We take upper limit of AM Peak frequency
 
-```{r}
-#Preprocess Bus Svc DF data to clean 
-
-BUS_SVC_DF_temp <- BUS_SVC_DF %>%
-  mutate(AM_Peak_Freq = lapply(AM_Peak_Freq, function(val) {
-    if (val == "-") {
-      return("-")  # Keep "-" as is
-    }
-    
-    parts <- strsplit(val, "-")[[1]]
-    
-    if (length(parts) == 2 && parts[1] == parts[2]) {
-      return(as.numeric(parts[1]))  # If the range is the same, return as a single number
-    } else if (length(parts) == 2) {
-      return(as.numeric(parts))  # Split and return as a numeric list
-    } else {
-      return(as.numeric(val))  # Return as a single numeric value
-    }
-  })) %>%
-  mutate(AM_OffPeak_Freq = lapply(AM_OffPeak_Freq, function(val) {
-    if (val == "-") {
-      return("-")  # Keep "-" as is
-    }
-    
-    parts <- strsplit(val, "-")[[1]]
-    
-    if (length(parts) == 2 && parts[1] == parts[2]) {
-      return(as.numeric(parts[1]))  # If the range is the same, return as a single number
-    } else if (length(parts) == 2) {
-      return(as.numeric(parts))  # Split and return as a numeric list
-    } else {
-      return(as.numeric(val))  # Return as a single numeric value
-    }
-  })) %>%
-  mutate(PM_Peak_Freq = lapply(PM_Peak_Freq, function(val) {
-    if (val == "-") {
-      return("-")  # Keep "-" as is
-    }
-    
-    parts <- strsplit(val, "-")[[1]]
-    
-    if (length(parts) == 2 && parts[1] == parts[2]) {
-      return(as.numeric(parts[1]))  # If the range is the same, return as a single number
-    } else if (length(parts) == 2) {
-      return(as.numeric(parts))  # Split and return as a numeric list
-    } else {
-      return(as.numeric(val))  # Return as a single numeric value
-    }
-  })) %>%
-  mutate(PM_OffPeak_Freq = lapply(PM_OffPeak_Freq, function(val) {
-    if (val == "-") {
-      return("-")  # Keep "-" as is
-    }
-    
-    parts <- strsplit(val, "-")[[1]]
-    
-    if (length(parts) == 2 && parts[1] == parts[2]) {
-      return(as.numeric(parts[1]))  # If the range is the same, return as a single number
-    } else if (length(parts) == 2) {
-      return(as.numeric(parts))  # Split and return as a numeric list
-    } else {
-      return(as.numeric(val))  # Return as a single numeric value
-    }
-  })) 
-
-
-
-
-
-```
 
 ```{r}
 
@@ -1019,6 +923,8 @@ norm_flow_od <- function(FLOW, BS_CODE_ORIGIN, BS_CODE_DEST, HOUR, NUM_DAY_OF_WE
 
 ## Generating Flows
 
+To generate OD flows between Masterplan Subzones (eg. Sembawang and Downtown etc.)
+
 ```{r}
 
 gen_od_timing_flows <- function(input_OD, sf_bs, timing, INPUT_BUS_SVC_DF, BUS_ROUTE_DF){ 
@@ -1076,49 +982,101 @@ plot_trip_summary <- function(OD){
 }
 ```
 
-Pre-generate results
+To generate the flow of passengers between bus stops along Bus Service 167
 
-```{r eval=FALSE}
-temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 6, BUS_SVC_DF, BUS_ROUTE_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_6.rds")
-temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 7, BUS_SVC_DF, BUS_ROUTE_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_7.rds")
-temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 8, BUS_SVC_DF, BUS_ROUTE_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_8.rds")
-temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 9, BUS_SVC_DF, BUS_ROUTE_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_9.rds")
-temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 10, BUS_SVC_DF, BUS_ROUTE_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_10.rds")
-temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 11, BUS_SVC_DF, BUS_ROUTE_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_11.rds")
-temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 12, BUS_SVC_DF, BUS_ROUTE_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_12.rds")
-temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 18, BUS_SVC_DF, BUS_ROUTE_DF)
-
-#saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_18.rds")
-#temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 19, BUS_SVC_DF)
-#saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_19.rds")
-#temp_sf_pa <- gen_od_timing_flows(OD_2023_11_DIR1, BUS_STOP_DF_MPSZ, 20, BUS_SVC_DF)
-#saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_norm_20.rds")
+```{r}
+generate_od_flow_btw_bs <- function(od_norm, BS_DIR){
+  temp_bs_data <- BS_DIR %>% arrange(BS_DIR$Seq)
+  
+  bs_flow_norm <- data.frame(ORIGIN_BS = integer(), DESTIN_BS = integer(), TOTAL_TRIPS = double())
+  
+  current_bs <- temp_bs_data[1,]$BS_Code
+  current_flow <- 0
+  
+  for (i in 2:nrow(temp_bs_data)){
+    next_bs <- temp_bs_data[i,]$BS_Code
+    
+    # Boarding Pax
+    temp_flow <- sum((od_norm %>% filter(ORIGIN_BS == current_bs))$NORM_TRIPS)
+    
+    if (is.na(temp_flow) == FALSE){
+      current_flow <- current_flow + temp_flow
+    }
+    
+    # Alighting Pax
+    temp_flow <- sum((od_norm %>% filter(DESTIN_BS == current_bs))$NORM_TRIPS)
+    
+    if (is.na(temp_flow) == FALSE){
+      current_flow <- current_flow - temp_flow
+    }
+    
+    bs_flow_norm_temp <- data.frame(ORIGIN_BS = current_bs, DESTIN_BS = next_bs, TOTAL_TRIPS = current_flow)
+    bs_flow_norm[nrow(bs_flow_norm) +1,] <- bs_flow_norm_temp  
+    current_bs <- next_bs
+  }
+  return (bs_flow_norm)
+}
 
 ```
 
-```{r eval=FALSE}
-temp_sf_pa <- gen_od_timing_flows(OD_2019_11_DIR1, BUS_STOP_DF_MPSZ, 6, BUS_SVC_2021_07_DF, BUS_ROUTE_2021_07_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_2019_11_norm_6.rds")
 
-temp_sf_pa <- gen_od_timing_flows(OD_2019_11_DIR1, BUS_STOP_DF_MPSZ, 7, BUS_SVC_2021_07_DF, BUS_ROUTE_2021_07_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_2019_11_norm_7.rds")
-temp_sf_pa <- gen_od_timing_flows(OD_2019_11_DIR1, BUS_STOP_DF_MPSZ, 8, BUS_SVC_2021_07_DF, BUS_ROUTE_2021_07_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_2019_11_norm_8.rds")
-temp_sf_pa <- gen_od_timing_flows(OD_2019_11_DIR1, BUS_STOP_DF_MPSZ, 9, BUS_SVC_2021_07_DF, BUS_ROUTE_2021_07_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_2019_11_norm_9.rds")
-temp_sf_pa <- gen_od_timing_flows(OD_2019_11_DIR1, BUS_STOP_DF_MPSZ, 10, BUS_SVC_2021_07_DF, BUS_ROUTE_2021_07_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_2019_11_norm_10.rds")
-temp_sf_pa <- gen_od_timing_flows(OD_2019_11_DIR1, BUS_STOP_DF_MPSZ, 11, BUS_SVC_2021_07_DF, BUS_ROUTE_2021_07_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_2019_11_norm_11.rds")
-temp_sf_pa <- gen_od_timing_flows(OD_2019_11_DIR1, BUS_STOP_DF_MPSZ, 12, BUS_SVC_2021_07_DF, BUS_ROUTE_2021_07_DF)
-saveRDS(temp_sf_pa, "data/167_OD_Analysis/sf_2019_11_norm_12.rds")
+##Generate results
+
+Compiled function to generate results
+
+```{r eval=FALSE}
+
+generate_od_flows <- function(OD_DIR, BS, BS_DF, BR_DF, BS_DIR, SF_BS){
+  
+  for (time in 6:22){
+    
+    
+    
+    FILENAME = paste("data/167_OD_Analysis/flow_export/", deparse(substitute(OD_DIR)), "_", time, sep = '')
+    
+    od_norm <- gen_od_timing_flows(OD_DIR, BS, time, BS_DF, BR_DF)
+    temp_od_norm <- od_norm
+    temp_od_norm$TOTAL_TRIPS <- NULL
+    sf_od_norm <- od_to_sf(temp_od_norm[5:7], SF_BS)
+    saveRDS(od_norm, paste(FILENAME, "_norm", ".RDS" ,sep = '') )
+    st_write(sf_od_norm  %>% st_transform(4326), paste(FILENAME, "_norm", ".geojson" ,sep = ''))
+    
+    temp_sf_pa <- gen_od_timing_PA(od_norm)
+    saveRDS(temp_sf_pa, paste(FILENAME, "_norm_pa", ".RDS" ,sep = ''))
+
+    temp_sf_pa_intra <- gen_od_timing_PA_intra(temp_sf_pa)
+    temp_sf_pa_intra_flows <- gen_od_timing_PA_flows(temp_sf_pa_intra)
+    sf_temp_sf_pa_intra_flows <- st_as_sf(temp_sf_pa_intra_flows)
+    saveRDS(temp_sf_pa_intra_flows, paste(FILENAME, "_norm_pa_intra", ".RDS" ,sep = ''))
+    st_write(sf_temp_sf_pa_intra_flows %>% st_transform(4326), paste(FILENAME, "_norm_pa_intra", ".geojson" ,sep = ''))
+
+    od_flow_norm_route <- generate_od_flow_btw_bs(od_norm, BS_DIR)
+    sf_od_flow_norm_route <- od_to_sf(od_flow_norm_route, SF_BS)
+    saveRDS(od_flow_norm_route, paste(FILENAME, "_flow_route", ".RDS" ,sep = '') )
+    st_write(sf_od_flow_norm_route %>% st_transform(4326), paste(FILENAME, "_flow_route", ".geojson" ,sep = ''))
+  }
+}
+
+```
+
+
+Code to run
+
+```{r eval=FALSE}
+generate_od_flows(OD_2024_04_DIR1, BUS_STOP_DF_MPSZ, BUS_SVC_2024_04_DF, BUS_ROUTE_2024_04_DF, BS_167_DIR_1_DF, sf_BS_167_DIR_1)
+generate_od_flows(OD_2022_11_DIR1, BUS_STOP_DF_MPSZ, BUS_SVC_2022_10_DF, BUS_ROUTE_2022_10_DF, BS_167_DIR_1_DF, sf_BS_167_DIR_1)
+generate_od_flows(OD_2019_11_DIR1, BUS_STOP_DF_MPSZ, BUS_SVC_2021_07_DF, BUS_ROUTE_2021_07_DF, BS_167_DIR_1_DF, sf_BS_167_DIR_1)
+```
+Export other layers to geojson
+
+```{r eval=FALSE}
+st_write(sf_BS_167_DIR_1_MPSZ %>% st_transform(4326), "data/167_OD_Analysis/geo_export/bs_167_dir_1.geojson")
+st_write(mpsz_pln_area %>% st_transform(4326), "data/167_OD_Analysis/geo_export/mpsz_pln_area_2019.geojson")
+```
+
+
+
+
 ```
 
 ::: panel-tabset
@@ -1126,7 +1084,7 @@ Weekday trips, 6am to 9am - temp plots
 
 For OD Count Data on Weekday, divide total trip value by 21 (21 weekdays excl PH)
 
-## 6amjjjj
+## 6am
 
 ```{r}
 tmap_options(check.and.fix = TRUE)

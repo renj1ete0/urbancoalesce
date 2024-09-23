@@ -2,7 +2,7 @@ project:
   type: website
 
 website:
-  title: "UrbanCoalesce"
+  title: "UrbanCoalesce Labs"
   search:
     location: navbar
     type: textbox
@@ -16,7 +16,12 @@ website:
       - href: portfolio.qmd
         text: Portfolio
       - href: explore/index.qmd
-        text: Exploration        
+        text: Exploration      
+        menu:
+          - href: https://renjieteo-is415.netlify.app/exercises/thex03.html#overview
+            text: HDB Resale Price Prediction comparative analysis with Multiple Linear Regression and Geographically Weighted Random Forest model
+          - href: https://spatialbros.netlify.app/
+            text: City of Melbourne Spatial Point Analysis (Data Democratisation - user input) 
         
       - icon: github
         href: https://github.com/renj1ete0
@@ -24,7 +29,7 @@ website:
         href: https://www.linkedin.com/in/renjieteo/
   page-footer:
     background: dark
-    left: "UrbanCoalesce" 
+    left: "UC Labs" 
     right: 
       - icon: github
         href: https://github.com/renj1ete0
