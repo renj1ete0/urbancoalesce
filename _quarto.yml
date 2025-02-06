@@ -13,10 +13,14 @@ website:
     right:
       - href: index.qmd
         text: Home
-      - href: portfolio.qmd
-        text: Portfolio
-      - href: explore/index.qmd
-        text: Exploration      
+      - text: Portfolio
+        menu:
+          - href: https://renjieteo-is415.netlify.app/exercises/thex03.html#overview
+            text: HDB Resale Price Prediction comparative analysis with Multiple Linear Regression and Geographically Weighted Random Forest model
+          - href: https://spatialbros.netlify.app/
+            text: City of Melbourne Spatial Point Analysis (Data Democratisation - user input) 
+      - text: Exploration
+        href: explore/index.qmd
       - icon: github
         href: https://github.com/renj1ete0
       - icon: linkedin
